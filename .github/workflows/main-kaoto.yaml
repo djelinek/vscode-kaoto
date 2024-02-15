@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  workflow_call:
 
 name: Build with main branch of kaoto-next
 
@@ -13,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ ubuntu-latest ]
 
     env:
       CODE_VERSION: max
@@ -24,49 +25,61 @@ jobs:
       uses: actions/checkout@v4
       with:
         path: vscode-kaoto
+
     - name: Checkout Kaoto
       uses: actions/checkout@v4
       with:
         path: kaoto-next
         repository: KaotoIO/kaoto-next
+
     - uses: actions/setup-node@v4
       with:
         node-version: '18.15.x'
+
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '21'
+
     - name: Kaoto build
       working-directory: kaoto-next
       run: |
         yarn
         yarn workspace @kaoto-next/ui run build:lib
+
     - name: yarn link kaoto-next
       working-directory: vscode-kaoto
       run: yarn link ../kaoto-next/packages/ui
+
     - name: yarn build:dev
       working-directory: vscode-kaoto
       run: yarn build:dev
+
     - name: yarn build:prod
       working-directory: vscode-kaoto
       run: yarn build:prod
+
     - name: vsix package
       working-directory: vscode-kaoto
       run: yarn vsce package --no-dependencies --yarn
+
     - name: Run UI Tests
       working-directory: vscode-kaoto
       run: xvfb-run -a yarn run test:it:with-prebuilt-vsix
+
     - name: Archive vsix
       uses: actions/upload-artifact@v4
       with:
         name: vsix-from-main-branch-of-kaoto
         path: 'vscode-kaoto/*.vsix'
+
     - name: Store VS Code logs
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: vscode-logs
         path: vscode-kaoto/test-resources/settings/logs
+
     - name: Store VS Code UI Tests screenshots on failure
       uses: actions/upload-artifact@v4
       if: failure()
