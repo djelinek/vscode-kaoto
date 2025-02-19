@@ -17,6 +17,9 @@ import * as vscode from "vscode";
 import * as KogitoVsCode from "@kie-tools-core/vscode-extension/dist";
 import { HelpFeedbackProvider } from "../views/providers/HelpFeedbackProvider";
 import { IntegrationsProvider } from "../views/providers/IntegrationsProvider";
+import { NewCamelRouteCommand } from "../commands/NewCamelRouteCommand";
+import { NewCamelKameletCommand } from "../commands/NewCamelKameletCommand";
+import { NewCamelPipeCommand } from "../commands/NewCamelPipeCommand";
 
 export class ExtensionContextHandler {
 
@@ -58,5 +61,19 @@ export class ExtensionContextHandler {
         });
         this.context.subscriptions.push(integrationsTreeView);
         this.context.subscriptions.push(vscode.commands.registerCommand('kaoto.integrations.refresh', () => integrationsProvider.refresh()));
+        this.registerNewCamelYamlFiles();
+    }
+
+    private registerNewCamelYamlFiles() {
+        // Register commands for new Camel Route files - YAML DSL
+        this.context.subscriptions.push(vscode.commands.registerCommand(NewCamelRouteCommand.ID_COMMAND_CAMEL_ROUTE_YAML, async () => {
+            await new NewCamelRouteCommand('YAML').create();
+        }));
+        this.context.subscriptions.push(vscode.commands.registerCommand(NewCamelKameletCommand.ID_COMMAND_CAMEL_KAMELET_YAML, async () => {
+            await new NewCamelKameletCommand('YAML').create();
+        }));
+        this.context.subscriptions.push(vscode.commands.registerCommand(NewCamelPipeCommand.ID_COMMAND_CAMEL_PIPE_YAML, async () => {
+            await new NewCamelPipeCommand('YAML').create();
+        }));
     }
 }
