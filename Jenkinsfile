@@ -28,6 +28,8 @@ node('rhel9'){
 	}
 	stage('UI Tests') {
 		wrap([$class: 'Xvnc']) {
+			env.TEST_RESOURCES = 'test-resources'
+			env.CODE_VERSION = 'max'
 			sh "yarn test:it"
 		}
 	}
