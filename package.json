@@ -426,6 +426,24 @@
         "command": "kaoto.redo",
         "title": "Redo",
         "category": "Kaoto"
+      },
+      {
+        "command": "kaoto.tests.refresh",
+        "title": "Refresh",
+        "category": "Kaoto",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kaoto.citrus.jbang.init.test",
+        "title": "New Citrus Test...",
+        "category": "Kaoto",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "kaoto.tests.run",
+        "title": "Run",
+        "category": "Kaoto",
+        "icon": "$(run)"
       }
     ],
     "keybindings": [
@@ -446,18 +464,6 @@
         "key": "ctrl+shift+z",
         "mac": "cmd+shift+z",
         "when": "activeCustomEditorId == webviewEditorsKaoto"
-      },
-      {
-        "command": "kaoto.tests.refresh",
-        "title": "Refresh",
-        "category": "Kaoto",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "kaoto.citrus.jbang.init.test",
-        "title": "New Citrus Test...",
-        "category": "Kaoto",
-        "icon": "$(new-file)"
       }
     ],
     "menus": {
@@ -712,6 +718,11 @@
           "command": "kaoto.deployments.route.stop",
           "group": "inline@4",
           "when": "view == kaoto.deployments && viewItem =~ /^.*stopEnabled.*$/"
+        },
+        {
+          "command": "kaoto.tests.run",
+          "when": "view == kaoto.tests && viewItem == citrus-test-file",
+          "group": "inline@1"
         }
       ]
     },

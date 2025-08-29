@@ -1,4 +1,4 @@
-import { ShellExecution, workspace } from 'vscode';
+import { ShellExecution, ShellExecutionOptions, workspace } from 'vscode';
 import { execSync } from 'child_process';
 import { KaotoOutputChannel } from '../extension/KaotoOutputChannel';
 
@@ -13,6 +13,13 @@ export class CitrusJBang {
 
 	public init(file: string, directory?: string): ShellExecution {
 		return new ShellExecution(this.jbang, [...this.defaultJbangArgs, 'init', `'${file}'`, directory ? `-dir='${directory}'` : '']);
+	}
+
+	public run(filePath: string, cwd?: string): ShellExecution {
+		const shellExecOptions: ShellExecutionOptions = {
+			cwd: cwd,
+		};
+		return new ShellExecution(this.jbang, [...this.defaultJbangArgs, 'run', `'${filePath}'`], shellExecOptions);
 	}
 
 	/**

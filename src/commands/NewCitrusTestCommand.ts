@@ -7,7 +7,7 @@ import { commands } from 'vscode';
 import { CitrusJBang } from '../helpers/CitrusJBang';
 
 export class NewCitrusTestCommand extends AbstractNewCamelRouteCommand {
-	public static readonly ID_COMMAND_CAMEL_ROUTE = 'kaoto.citrus.jbang.init.test';
+	public static readonly ID_COMMAND_CITRUS_INIT = 'kaoto.citrus.jbang.init.test';
 	protected static readonly PROGRESS_NOTIFICATION_MESSAGE = 'Creating a new Citrus Test file...';
 
 	public async create(): Promise<void> {

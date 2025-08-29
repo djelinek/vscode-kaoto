@@ -53,6 +53,8 @@ import { CamelRunSourceDirJBangTask } from '../tasks/CamelRunSourceDirJBangTask'
 import { Folder } from '../views/integrationTreeItems/Folder';
 import { TestsProvider } from '../views/providers/TestsProvider';
 import { NewCitrusTestCommand } from '../commands/NewCitrusTestCommand';
+import { CitrusRunJBangTask } from '../tasks/CitrusRunJBangTask';
+import { Test } from 'src/views/testTreeItems/Test';
 
 export class ExtensionContextHandler {
 	protected kieEditorStore: KogitoVsCode.VsCodeKieEditorStore;
@@ -246,9 +248,17 @@ export class ExtensionContextHandler {
 			dispose: () => testsProvider.dispose(),
 		});
 		this.context.subscriptions.push(
-			vscode.commands.registerCommand(NewCitrusTestCommand.ID_COMMAND_CAMEL_ROUTE, async () => {
+			vscode.commands.registerCommand(NewCitrusTestCommand.ID_COMMAND_CITRUS_INIT, async () => {
 				await new NewCitrusTestCommand().create();
-				await this.sendCommandTrackingEvent(NewCitrusTestCommand.ID_COMMAND_CAMEL_ROUTE);
+				await this.sendCommandTrackingEvent(NewCitrusTestCommand.ID_COMMAND_CITRUS_INIT);
+			}),
+		);
+		const TESTS_RUN_COMMAND_ID: string = 'kaoto.tests.run';
+		this.context.subscriptions.push(
+			vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
+				const runTask = await CitrusRunJBangTask.create(test.resourceUri?.fsPath as string);
+				await runTask.execute();
+				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
 			}),
 		);
 	}
