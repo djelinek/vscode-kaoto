@@ -448,10 +448,10 @@
         "when": "activeCustomEditorId == webviewEditorsKaoto"
       },
       {
-        "command": "kaoto.redo",
-        "key": "ctrl+y",
-        "mac": "cmd+shift+z",
-        "when": "activeCustomEditorId == webviewEditorsKaoto"
+        "command": "kaoto.tests.refresh",
+        "title": "Refresh",
+        "category": "Kaoto",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -620,6 +620,11 @@
           "command": "kaoto.deployments.refresh",
           "group": "navigation",
           "when": "view == kaoto.deployments"
+        },
+        {
+          "command": "kaoto.tests.refresh",
+          "group": "navigation",
+          "when": "view == kaoto.tests"
         }
       ],
       "view/item/context": [
@@ -968,6 +973,14 @@
         {
           "id": "kaoto.deployments",
           "name": "Deployments",
+          "contextualTitle": "Kaoto",
+          "icon": "icons/kaoto.png",
+          "initialSize": 2,
+          "when": "!virtualWorkspace && kaoto.jbangAvailable"
+        },
+        {
+          "id": "kaoto.tests",
+          "name": "Tests",
           "contextualTitle": "Kaoto",
           "icon": "icons/kaoto.png",
           "initialSize": 2,
