@@ -96,6 +96,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	contextHandler.registerDeploymentsView(portManager);
 
 	/*
+	 * register 'Tests' view provider
+	 */
+	contextHandler.registerTestsView();
+
+	/*
 	 * register 'Help & Feedback' view provider
 	 */
 	contextHandler.registerHelpAndFeedbackView();

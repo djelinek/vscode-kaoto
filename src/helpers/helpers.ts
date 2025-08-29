@@ -71,6 +71,11 @@ export async function verifyCamelJBangTrustedSource(): Promise<boolean> {
 	return output.includes('https://github.com/apache/camel/');
 }
 
+export async function verifyCitrusJBangTrustedSource(): Promise<boolean> {
+	const output = await runJBangCommandWithStatusBar('trust list', 'Checking Citrus Trusted Source is a part of JBang configuration...');
+	return output.includes('https://github.com/citrusframework/citrus/');
+}
+
 export async function verifyCamelKubernetesPluginIsInstalled(): Promise<boolean> {
 	const output = await runJBangCommandWithStatusBar('camel@apache/camel plugin get', 'Checking Camel JBang Kubernetes plugin...');
 	return output.includes('kubernetes');

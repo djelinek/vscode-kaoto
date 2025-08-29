@@ -23,7 +23,13 @@ import { Integration } from '../views/integrationTreeItems/Integration';
 import { NewCamelRouteCommand } from '../commands/NewCamelRouteCommand';
 import { NewCamelKameletCommand } from '../commands/NewCamelKameletCommand';
 import { NewCamelPipeCommand } from '../commands/NewCamelPipeCommand';
-import { findFolderOfPomXml, verifyCamelJBangTrustedSource, verifyCamelKubernetesPluginIsInstalled, verifyJBangExists } from '../helpers/helpers';
+import {
+	findFolderOfPomXml,
+	verifyCamelJBangTrustedSource,
+	verifyCamelKubernetesPluginIsInstalled,
+	verifyCitrusJBangTrustedSource,
+	verifyJBangExists,
+} from '../helpers/helpers';
 import { KaotoOutputChannel } from './KaotoOutputChannel';
 import { NewCamelFileCommand } from '../commands/NewCamelFileCommand';
 import { confirmFileDeleteDialog } from '../helpers/modals';
@@ -45,6 +51,8 @@ import { satisfies } from 'compare-versions';
 import { StepsOnSaveManager } from '../helpers/StepsOnSaveManager';
 import { CamelRunSourceDirJBangTask } from '../tasks/CamelRunSourceDirJBangTask';
 import { Folder } from '../views/integrationTreeItems/Folder';
+import { TestsProvider } from '../views/providers/TestsProvider';
+import { NewCitrusTestCommand } from '../commands/NewCitrusTestCommand';
 
 export class ExtensionContextHandler {
 	protected kieEditorStore: KogitoVsCode.VsCodeKieEditorStore;
@@ -165,6 +173,18 @@ export class ExtensionContextHandler {
 		}
 	}
 
+	/**
+	 * check if Citrus Trusted Source is added into JBang configuration
+	 */
+	public async checkCitrusJbangTrustedSource() {
+		const citrusTrustedSource = await verifyCitrusJBangTrustedSource();
+		if (!citrusTrustedSource) {
+			const citrusTrustUrl: string = 'https://github.com/citrusframework/citrus/';
+			execSync(`jbang trust add ${citrusTrustUrl}`, { stdio: ['pipe', 'pipe', process.stderr] });
+			KaotoOutputChannel.logInfo('Citrus Trusted Source was added into JBang configuration.');
+		}
+	}
+
 	public async registerToggleSourceCode() {
 		const OPEN_SOURCE_COMMAND_ID: string = 'kaoto.open.source';
 		const CLOSE_SOURCE_COMMAND_ID: string = 'kaoto.close.source';
@@ -212,6 +232,25 @@ export class ExtensionContextHandler {
 		const refreshCommand = vscode.commands.registerCommand('kaoto.integrations.refresh', () => integrationsProvider.refresh());
 		this.context.subscriptions.push(integrationsTreeView, dispose, refreshCommand);
 		this.registerIntegrationsItemsContextMenu(integrationsProvider);
+	}
+
+	public registerTestsView() {
+		const testsProvider = new TestsProvider();
+		const testsTreeView = vscode.window.createTreeView('kaoto.tests', {
+			treeDataProvider: testsProvider,
+			showCollapseAll: true,
+		});
+		this.context.subscriptions.push(testsTreeView);
+		this.context.subscriptions.push(vscode.commands.registerCommand('kaoto.tests.refresh', () => testsProvider.refresh()));
+		this.context.subscriptions.push({
+			dispose: () => testsProvider.dispose(),
+		});
+		this.context.subscriptions.push(
+			vscode.commands.registerCommand(NewCitrusTestCommand.ID_COMMAND_CAMEL_ROUTE, async () => {
+				await new NewCitrusTestCommand().create();
+				await this.sendCommandTrackingEvent(NewCitrusTestCommand.ID_COMMAND_CAMEL_ROUTE);
+			}),
+		);
 	}
 
 	public registerDeploymentsView(portManager: PortManager) {

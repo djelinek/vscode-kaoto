@@ -452,6 +452,12 @@
         "title": "Refresh",
         "category": "Kaoto",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "kaoto.citrus.jbang.init.test",
+        "title": "New Citrus Test...",
+        "category": "Kaoto",
+        "icon": "$(new-file)"
       }
     ],
     "menus": {
@@ -569,6 +575,10 @@
         {
           "command": "kaoto.redo",
           "when": "false"
+        },
+        {
+          "command": "kaoto.citrus.jbang.init.test",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -623,6 +633,11 @@
         },
         {
           "command": "kaoto.tests.refresh",
+          "group": "navigation",
+          "when": "view == kaoto.tests"
+        },
+        {
+          "command": "kaoto.citrus.jbang.init.test",
           "group": "navigation",
           "when": "view == kaoto.tests"
         }
@@ -717,6 +732,11 @@
         "view": "kaoto.integrations",
         "contents": "You have not yet added a folder to the workspace.\n[Open Folder](command:vscode.openFolder)",
         "when": "workspaceFolderCount == 0"
+      },
+      {
+        "view": "kaoto.tests",
+        "contents": "In order to start with Citrus, you can create a new Citrus Test file.\n[New Citrus Test...](command:kaoto.citrus.jbang.init.test)",
+        "when": "!virtualWorkspace && kaoto.jbangAvailable && workspaceFolderCount > 0"
       }
     ],
     "configuration": [

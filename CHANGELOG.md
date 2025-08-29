@@ -22,6 +22,9 @@
 - Upgrade default Camel JBang version from 4.14.0 to 4.16.0
 - Allow manual Camel dependencies update in pom.xml
 - Add `Kaoto first steps` extension walkthrough
+- add Tests section displaying all citrus test files
+  - also allow to create new tests
+  - run tests
 
 # 2.7.0
 
