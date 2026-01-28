@@ -13,51 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Event, EventEmitter, FileSystemWatcher, TreeDataProvider, TreeItem, workspace } from 'vscode';
+import { commands, TreeItem, Uri } from 'vscode';
+import { AbstractFolderTreeProvider } from './AbstractFolderTreeProvider';
 import { Test } from '../testTreeItems/Test';
+import { TestFolder } from '../testTreeItems/TestFolder';
 
-type TreeItemType = TreeItem | undefined | null | void;
-
-export class TestsProvider implements TreeDataProvider<TreeItem> {
-	private readonly _onDidChangeTreeData: EventEmitter<TreeItemType> = new EventEmitter<TreeItemType>();
-	readonly onDidChangeTreeData: Event<TreeItemType> = this._onDidChangeTreeData.event;
-
+export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	private static readonly FILE_PATTERN = '{**/*.citrus.yaml,**/*IT.yaml,**/*test.yaml}';
-	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**}';
-	private readonly fileWatcher: FileSystemWatcher;
+	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**,**/.mvn/**}';
 
 	constructor() {
-		this.fileWatcher = workspace.createFileSystemWatcher(TestsProvider.FILE_PATTERN);
-		this.fileWatcher.onDidChange(this.refresh.bind(this));
-		this.fileWatcher.onDidCreate(this.refresh.bind(this));
-		this.fileWatcher.onDidDelete(this.refresh.bind(this));
+		super();
+		this.initFileWatcher();
 	}
 
-	dispose(): void {
-		this._onDidChangeTreeData.dispose();
-		this.fileWatcher.dispose();
+	protected getFilePattern(): string {
+		return TestsProvider.FILE_PATTERN;
 	}
 
-	refresh(): void {
-		this._onDidChangeTreeData.fire();
+	protected getExcludePattern(): string {
+		return TestsProvider.EXCLUDE_PATTERN;
 	}
 
-	getTreeItem(element: TreeItem): TreeItem {
-		return element;
+	protected createFolderItem(name: string, folderUri: Uri, isUnderMavenRoot: boolean, isMavenRoot: boolean, isWorkspaceRoot: boolean = false): TestFolder {
+		return new TestFolder(name, folderUri, isUnderMavenRoot, isMavenRoot, isWorkspaceRoot);
 	}
 
-	async getChildren(): Promise<TreeItem[]> {
-		const testFiles = await this.getTestAvailableInWorkspace();
-		if (testFiles.length > 0) {
-			return testFiles;
-		}
-		return [];
+	protected async toTreeItemForFile(file: Uri, _isUnderMavenRoot: boolean, _isTopLevelWithinWorkspace: boolean): Promise<TreeItem> {
+		return new Test(file);
 	}
 
-	private async getTestAvailableInWorkspace(): Promise<TreeItem[]> {
-		const testFiles = await workspace.findFiles(TestsProvider.FILE_PATTERN, TestsProvider.EXCLUDE_PATTERN);
-		return testFiles.map((file) => {
-			return new Test(file);
-		});
+	protected isFolderItem(element: TreeItem): element is TestFolder {
+		return element instanceof TestFolder;
+	}
+
+	protected setContext(hasFiles: boolean): void {
+		commands.executeCommand('setContext', 'kaoto.testExists', hasFiles);
 	}
 }

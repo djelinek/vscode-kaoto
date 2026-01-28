@@ -1,22 +1,30 @@
-import { basename, dirname, relative } from 'path';
-import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon, workspace } from 'vscode';
+/**
+ * Copyright 2025 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { basename } from 'path';
+import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon } from 'vscode';
 
 export class Test extends TreeItem {
-	constructor(file: Uri) {
-		super(basename(file.fsPath), TreeItemCollapsibleState.None);
-		this.tooltip = file.fsPath;
-		this.iconPath = ThemeIcon.File;
-		this.resourceUri = file;
-		this.description = this.getDescription(this.resourceUri);
-		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [file] };
-		this.contextValue = 'citrus-test-file';
-	}
+	private static readonly CONTEXT_TEST_FILE = 'citrus-test-file';
 
-	private getDescription(filepath: Uri): string {
-		if (workspace.workspaceFolders && workspace.workspaceFolders.length > 1) {
-			return dirname(relative(dirname(workspace.getWorkspaceFolder(filepath)?.uri.fsPath as string), filepath.fsPath));
-		} else {
-			return dirname(relative(workspace.getWorkspaceFolder(filepath)?.uri.fsPath as string, filepath.fsPath));
-		}
+	constructor(public readonly fileUri: Uri) {
+		super(basename(fileUri.fsPath), TreeItemCollapsibleState.None);
+		this.resourceUri = fileUri;
+		this.tooltip = fileUri.fsPath;
+		this.iconPath = ThemeIcon.File;
+		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [fileUri] };
+		this.contextValue = Test.CONTEXT_TEST_FILE;
 	}
 }

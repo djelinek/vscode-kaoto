@@ -16,19 +16,12 @@
 import { Uri } from 'vscode';
 import { AbstractFolder } from '../treeItems/AbstractFolder';
 
-export class Folder extends AbstractFolder {
-	constructor(
-		labelName: string,
-		folderUri: Uri,
-		tooltipText?: string,
-		isUnderMavenRoot: boolean = false,
-		isMavenRoot: boolean = false,
-		isWorkspaceRoot: boolean = false,
-	) {
-		super(labelName, folderUri, isUnderMavenRoot, isMavenRoot, isWorkspaceRoot, tooltipText);
+export class TestFolder extends AbstractFolder {
+	constructor(labelName: string, folderUri: Uri, isUnderMavenRoot: boolean = false, isMavenRoot: boolean = false, isWorkspaceRoot: boolean = false) {
+		super(labelName, folderUri, isUnderMavenRoot, isMavenRoot, isWorkspaceRoot);
 	}
 
 	protected getContextPrefix(): string {
-		return 'folder';
+		return 'test-folder';
 	}
 }
