@@ -18,6 +18,9 @@ import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon } from 'vscode';
 
 export class Test extends TreeItem {
 	private static readonly CONTEXT_TEST_FILE = 'citrus-test-file';
+	private static readonly CONTEXT_TEST_FILE_RUNNING = 'citrus-test-file-running';
+
+	private _isRunning: boolean = false;
 
 	constructor(public readonly fileUri: Uri) {
 		super(basename(fileUri.fsPath), TreeItemCollapsibleState.None);
@@ -26,5 +29,26 @@ export class Test extends TreeItem {
 		this.iconPath = ThemeIcon.File;
 		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [fileUri] };
 		this.contextValue = Test.CONTEXT_TEST_FILE;
+	}
+
+	get isRunning(): boolean {
+		return this._isRunning;
+	}
+
+	/**
+	 * Set the running state of the test
+	 * @param running Whether the test is running
+	 */
+	setRunning(running: boolean): void {
+		this._isRunning = running;
+		if (running) {
+			this.iconPath = new ThemeIcon('sync~spin');
+			this.contextValue = Test.CONTEXT_TEST_FILE_RUNNING;
+			this.description = 'Running...';
+		} else {
+			this.iconPath = ThemeIcon.File;
+			this.contextValue = Test.CONTEXT_TEST_FILE;
+			this.description = undefined;
+		}
 	}
 }

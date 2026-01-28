@@ -265,8 +265,20 @@ export class ExtensionContextHandler {
 		const TESTS_RUN_COMMAND_ID: string = 'kaoto.tests.run';
 		this.context.subscriptions.push(
 			vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
-				const runTask = await CamelTestRunJBangTask.create(test.resourceUri?.fsPath as string);
-				await runTask.execute();
+				const filePath = test.resourceUri?.fsPath as string;
+				const fileName = filePath.split('/').pop() || 'test';
+
+				// Show spinning indicator on the tree item
+				testsProvider.setTestRunning(filePath, true);
+
+				try {
+					const runTask = await CamelTestRunJBangTask.create(filePath);
+					await runTask.executeAndWaitWithProgress(`Running test: ${fileName}`);
+				} finally {
+					// Always reset the running state
+					testsProvider.setTestRunning(filePath, false);
+				}
+
 				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
 			}),
 		);

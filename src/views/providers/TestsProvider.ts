@@ -22,6 +22,9 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	private static readonly FILE_PATTERN = '{**/*.citrus.yaml,**/*IT.yaml,**/*test.yaml}';
 	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**,**/.mvn/**}';
 
+	/** Cache of file paths to Test items for efficient lookup and single-item refresh */
+	private readonly testItemCache: Map<string, Test> = new Map();
+
 	constructor() {
 		super();
 		this.initFileWatcher();
@@ -40,7 +43,16 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	protected async toTreeItemForFile(file: Uri, _isUnderMavenRoot: boolean, _isTopLevelWithinWorkspace: boolean): Promise<TreeItem> {
-		return new Test(file);
+		// Check if we have a cached item for this file
+		const cachedTest = this.testItemCache.get(file.fsPath);
+		if (cachedTest) {
+			return cachedTest;
+		}
+
+		// Create new test item and cache it
+		const test = new Test(file);
+		this.testItemCache.set(file.fsPath, test);
+		return test;
 	}
 
 	protected isFolderItem(element: TreeItem): element is TestFolder {
@@ -49,5 +61,40 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 
 	protected setContext(hasFiles: boolean): void {
 		commands.executeCommand('setContext', 'kaoto.testExists', hasFiles);
+	}
+
+	/**
+	 * Override refresh to clear the cache when a full refresh is triggered
+	 */
+	refresh(): void {
+		this.testItemCache.clear();
+		super.refresh();
+	}
+
+	/**
+	 * Set the running state for a test and refresh only that item
+	 * @param filePath The file path of the test
+	 * @param running Whether the test is running
+	 */
+	setTestRunning(filePath: string, running: boolean): void {
+		const testItem = this.testItemCache.get(filePath);
+		if (testItem) {
+			// Update the running state on the cached item
+			testItem.setRunning(running);
+			// Refresh only this specific item
+			this._onDidChangeTreeData.fire(testItem);
+		} else {
+			// Fallback: if item not in cache, do a full refresh
+			// This shouldn't normally happen if the test was already displayed
+			this.refresh();
+		}
+	}
+
+	/**
+	 * Refresh a specific test item
+	 * @param test The test item to refresh
+	 */
+	refreshItem(test: Test): void {
+		this._onDidChangeTreeData.fire(test);
 	}
 }
