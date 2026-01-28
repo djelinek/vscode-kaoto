@@ -29,6 +29,7 @@ import {
 	verifyCamelKubernetesPluginIsInstalled,
 	verifyCitrusJBangTrustedSource,
 	verifyJBangExists,
+	verifyCamelJBangTestPluginIsInstalled,
 } from '../helpers/helpers';
 import { KaotoOutputChannel } from './KaotoOutputChannel';
 import { NewCamelFileCommand } from '../commands/NewCamelFileCommand';
@@ -52,8 +53,8 @@ import { StepsOnSaveManager } from '../helpers/StepsOnSaveManager';
 import { CamelRunSourceDirJBangTask } from '../tasks/CamelRunSourceDirJBangTask';
 import { Folder } from '../views/integrationTreeItems/Folder';
 import { TestsProvider } from '../views/providers/TestsProvider';
-import { NewCitrusTestCommand } from '../commands/NewCitrusTestCommand';
-import { CitrusRunJBangTask } from '../tasks/CitrusRunJBangTask';
+import { NewCamelTestCommand } from '../commands/NewCamelTestCommand';
+import { CamelTestRunJBangTask } from '../tasks/CamelTestRunJBangTask';
 import { Test } from 'src/views/testTreeItems/Test';
 
 export class ExtensionContextHandler {
@@ -139,11 +140,31 @@ export class ExtensionContextHandler {
 		}
 	}
 
+	/**
+	 * check if Citrus Trusted Source is added into JBang configuration
+	 */
+	public async checkCitrusJbangTrustedSource() {
+		const citrusTrustedSource = await verifyCitrusJBangTrustedSource();
+		if (!citrusTrustedSource) {
+			const citrusTrustUrl: string = 'https://github.com/citrusframework/citrus/';
+			execSync(`jbang trust add ${citrusTrustUrl}`, { stdio: ['pipe', 'pipe', process.stderr] });
+			KaotoOutputChannel.logInfo('Citrus Trusted Source was added into JBang configuration.');
+		}
+	}
+
 	public async checkCamelJBangKubernetesPlugin() {
 		const camelKubernetesPluginInstalled = await verifyCamelKubernetesPluginIsInstalled();
 		if (!camelKubernetesPluginInstalled) {
 			await new CamelAddPluginJBangTask('kubernetes').executeAndWait();
 			KaotoOutputChannel.logInfo('Apache Camel JBang Kubernetes plugin was installed.');
+		}
+	}
+
+	public async checkCamelJBangTestPlugin() {
+		const camelTestPluginInstalled = await verifyCamelJBangTestPluginIsInstalled();
+		if (!camelTestPluginInstalled) {
+			await new CamelAddPluginJBangTask('test').executeAndWait();
+			KaotoOutputChannel.logInfo('Apache Camel JBang Test plugin was installed.');
 		}
 	}
 
@@ -172,18 +193,6 @@ export class ExtensionContextHandler {
 			await this.context.globalState.update(storageKey, currentVersion);
 		} catch (err) {
 			KaotoOutputChannel.logWarning(`Unable to show What's New: ${String(err)}`);
-		}
-	}
-
-	/**
-	 * check if Citrus Trusted Source is added into JBang configuration
-	 */
-	public async checkCitrusJbangTrustedSource() {
-		const citrusTrustedSource = await verifyCitrusJBangTrustedSource();
-		if (!citrusTrustedSource) {
-			const citrusTrustUrl: string = 'https://github.com/citrusframework/citrus/';
-			execSync(`jbang trust add ${citrusTrustUrl}`, { stdio: ['pipe', 'pipe', process.stderr] });
-			KaotoOutputChannel.logInfo('Citrus Trusted Source was added into JBang configuration.');
 		}
 	}
 
@@ -248,15 +257,15 @@ export class ExtensionContextHandler {
 			dispose: () => testsProvider.dispose(),
 		});
 		this.context.subscriptions.push(
-			vscode.commands.registerCommand(NewCitrusTestCommand.ID_COMMAND_CITRUS_INIT, async () => {
-				await new NewCitrusTestCommand().create();
-				await this.sendCommandTrackingEvent(NewCitrusTestCommand.ID_COMMAND_CITRUS_INIT);
+			vscode.commands.registerCommand(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT, async () => {
+				await new NewCamelTestCommand().create();
+				await this.sendCommandTrackingEvent(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT);
 			}),
 		);
 		const TESTS_RUN_COMMAND_ID: string = 'kaoto.tests.run';
 		this.context.subscriptions.push(
 			vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
-				const runTask = await CitrusRunJBangTask.create(test.resourceUri?.fsPath as string);
+				const runTask = await CamelTestRunJBangTask.create(test.resourceUri?.fsPath as string);
 				await runTask.execute();
 				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
 			}),

@@ -22,8 +22,7 @@ export class TestsProvider implements TreeDataProvider<TreeItem> {
 	private readonly _onDidChangeTreeData: EventEmitter<TreeItemType> = new EventEmitter<TreeItemType>();
 	readonly onDidChangeTreeData: Event<TreeItemType> = this._onDidChangeTreeData.event;
 
-	private static readonly FILE_PATTERN =
-		'{**/*.citrus.xml,**/*.citrus.yaml,**/*.citrus.java,**/*IT.yaml,**/*IT.xml,**/*IT.java,**/*test.yaml,**/*test.xml,**/*test.java}';
+	private static readonly FILE_PATTERN = '{**/*.citrus.yaml,**/*IT.yaml,**/*test.yaml}';
 	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**}';
 	private readonly fileWatcher: FileSystemWatcher;
 

@@ -131,6 +131,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	if (jbang) {
 		await contextHandler.checkCamelJbangTrustedSource();
 		await contextHandler.checkCamelJBangKubernetesPlugin();
+		await contextHandler.checkCamelJBangTestPlugin();
 	}
 
 	KaotoOutputChannel.logInfo('Kaoto extension is successfully setup.');

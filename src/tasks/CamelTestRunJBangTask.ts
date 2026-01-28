@@ -15,17 +15,17 @@
  */
 import { ShellExecution, TaskScope } from 'vscode';
 import { CamelJBangTask } from './CamelJBangTask';
-import { CitrusJBang } from '../helpers/CitrusJBang';
+import { CamelTestJBang } from '../helpers/CamelTestJBang';
 import { basename, dirname } from 'path';
 
-export class CitrusRunJBangTask extends CamelJBangTask {
+export class CamelTestRunJBangTask extends CamelJBangTask {
 	private constructor(shellExecution: ShellExecution, filePath: string) {
 		super(TaskScope.Workspace, `Running - ${basename(filePath)}`, shellExecution);
 		this.isBackground = true;
 	}
 
-	static async create(filePath: string): Promise<CitrusRunJBangTask> {
-		const shellExecution = new CitrusJBang().run(filePath, dirname(filePath));
-		return new CitrusRunJBangTask(shellExecution, filePath);
+	static async create(filePath: string): Promise<CamelTestRunJBangTask> {
+		const shellExecution = await new CamelTestJBang().run(filePath, dirname(filePath));
+		return new CamelTestRunJBangTask(shellExecution, filePath);
 	}
 }

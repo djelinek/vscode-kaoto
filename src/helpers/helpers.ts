@@ -81,6 +81,11 @@ export async function verifyCamelKubernetesPluginIsInstalled(): Promise<boolean>
 	return output.includes('kubernetes');
 }
 
+export async function verifyCamelJBangTestPluginIsInstalled(): Promise<boolean> {
+	const output = await runJBangCommandWithStatusBar('camel@apache/camel plugin get', 'Checking Camel JBang Test plugin...');
+	return output.includes('test');
+}
+
 async function runJBangCommandWithStatusBar(args: string, msg: string): Promise<string> {
 	let output = '';
 	await window.withProgress(
