@@ -721,7 +721,7 @@
         },
         {
           "command": "kaoto.tests.run",
-          "when": "view == kaoto.tests && viewItem == citrus-test-file",
+          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file/",
           "group": "inline@1"
         }
       ]

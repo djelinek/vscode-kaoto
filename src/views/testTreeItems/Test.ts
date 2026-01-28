@@ -14,25 +14,34 @@
  * limitations under the License.
  */
 import { basename } from 'path';
-import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon } from 'vscode';
+import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon, ThemeColor } from 'vscode';
+
+export type TestResult = 'none' | 'success' | 'failure';
 
 export class Test extends TreeItem {
 	private static readonly CONTEXT_TEST_FILE = 'citrus-test-file';
 	private static readonly CONTEXT_TEST_FILE_RUNNING = 'citrus-test-file-running';
+	private static readonly CONTEXT_TEST_FILE_PASSED = 'citrus-test-file-passed';
+	private static readonly CONTEXT_TEST_FILE_FAILED = 'citrus-test-file-failed';
 
 	private _isRunning: boolean = false;
+	private _result: TestResult = 'none';
 
 	constructor(public readonly fileUri: Uri) {
 		super(basename(fileUri.fsPath), TreeItemCollapsibleState.None);
 		this.resourceUri = fileUri;
 		this.tooltip = fileUri.fsPath;
-		this.iconPath = ThemeIcon.File;
+		this.iconPath = new ThemeIcon('symbol-file');
 		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [fileUri] };
 		this.contextValue = Test.CONTEXT_TEST_FILE;
 	}
 
 	get isRunning(): boolean {
 		return this._isRunning;
+	}
+
+	get result(): TestResult {
+		return this._result;
 	}
 
 	/**
@@ -46,9 +55,42 @@ export class Test extends TreeItem {
 			this.contextValue = Test.CONTEXT_TEST_FILE_RUNNING;
 			this.description = 'Running...';
 		} else {
-			this.iconPath = ThemeIcon.File;
-			this.contextValue = Test.CONTEXT_TEST_FILE;
-			this.description = undefined;
+			// When stopping, restore based on previous result
+			this.applyResultState();
+		}
+	}
+
+	/**
+	 * Set the test result and update the visual state
+	 * @param result The test result
+	 */
+	setResult(result: TestResult): void {
+		this._result = result;
+		if (!this._isRunning) {
+			this.applyResultState();
+		}
+	}
+
+	/**
+	 * Apply the visual state based on the current result
+	 */
+	private applyResultState(): void {
+		switch (this._result) {
+			case 'success':
+				this.iconPath = new ThemeIcon('pass', new ThemeColor('testing.iconPassed'));
+				this.contextValue = Test.CONTEXT_TEST_FILE_PASSED;
+				this.description = 'Passed';
+				break;
+			case 'failure':
+				this.iconPath = new ThemeIcon('error', new ThemeColor('testing.iconFailed'));
+				this.contextValue = Test.CONTEXT_TEST_FILE_FAILED;
+				this.description = 'Failed';
+				break;
+			default:
+				this.iconPath = ThemeIcon.File;
+				this.contextValue = Test.CONTEXT_TEST_FILE;
+				this.description = undefined;
+				break;
 		}
 	}
 }

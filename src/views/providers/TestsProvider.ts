@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { commands, TreeItem, Uri } from 'vscode';
+import { commands, TreeItem, Uri, workspace } from 'vscode';
 import { AbstractFolderTreeProvider } from './AbstractFolderTreeProvider';
-import { Test } from '../testTreeItems/Test';
+import { Test, TestResult } from '../testTreeItems/Test';
 import { TestFolder } from '../testTreeItems/TestFolder';
+import { KaotoOutputChannel } from '../../extension/KaotoOutputChannel';
+import { dirname, basename, join } from 'path';
 
 export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	private static readonly FILE_PATTERN = '{**/*.citrus.yaml,**/*IT.yaml,**/*test.yaml}';
@@ -24,6 +26,9 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 
 	/** Cache of file paths to Test items for efficient lookup and single-item refresh */
 	private readonly testItemCache: Map<string, Test> = new Map();
+
+	/** Persistent storage of test results that survives cache clears */
+	private readonly testResults: Map<string, TestResult> = new Map();
 
 	constructor() {
 		super();
@@ -51,6 +56,13 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 
 		// Create new test item and cache it
 		const test = new Test(file);
+
+		// Apply any stored result from previous runs
+		const storedResult = this.testResults.get(file.fsPath);
+		if (storedResult && storedResult !== 'none') {
+			test.setResult(storedResult);
+		}
+
 		this.testItemCache.set(file.fsPath, test);
 		return test;
 	}
@@ -64,7 +76,8 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	/**
-	 * Override refresh to clear the cache when a full refresh is triggered
+	 * Override refresh to clear the item cache when a full refresh is triggered
+	 * Note: test results are preserved to maintain pass/fail status
 	 */
 	refresh(): void {
 		this.testItemCache.clear();
@@ -91,10 +104,72 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	/**
+	 * Set the test result and refresh only that item
+	 * @param filePath The file path of the test
+	 * @param result The test result
+	 */
+	setTestResult(filePath: string, result: TestResult): void {
+		// Store the result persistently
+		this.testResults.set(filePath, result);
+
+		const testItem = this.testItemCache.get(filePath);
+		if (testItem) {
+			testItem.setResult(result);
+			this._onDidChangeTreeData.fire(testItem);
+		}
+	}
+
+	/**
 	 * Refresh a specific test item
 	 * @param test The test item to refresh
 	 */
 	refreshItem(test: Test): void {
 		this._onDidChangeTreeData.fire(test);
+	}
+
+	/**
+	 * Read the test result from the Citrus report JSON file
+	 * @param testFilePath The path to the test file
+	 * @returns The test result (success, failure, or none if not found)
+	 */
+	async readTestResult(testFilePath: string): Promise<TestResult> {
+		try {
+			// Build the result file path
+			// Test file patterns and their result file names:
+			// - {dir}/{name}.test.yaml -> {dir}/.citrus-jbang/citrus-reports/{name}.test-flow.json
+			// - {dir}/{name}.citrus.yaml -> {dir}/.citrus-jbang/citrus-reports/{name}-flow.json
+			const testDir = dirname(testFilePath);
+			const fileName = basename(testFilePath);
+
+			// Determine the base name for the result file
+			let resultBaseName: string;
+			if (fileName.endsWith('.citrus.yaml')) {
+				resultBaseName = fileName.slice(0, -'.citrus.yaml'.length);
+			} else if (fileName.endsWith('.test.yaml')) {
+				resultBaseName = fileName.slice(0, -'.yaml'.length); // Keep ".test" part
+			} else {
+				// Fallback for other patterns like *IT.yaml
+				resultBaseName = basename(testFilePath, '.yaml');
+			}
+
+			const resultFilePath = join(testDir, '.citrus-jbang', 'citrus-reports', `${resultBaseName}-flow.json`);
+
+			const resultUri = Uri.file(resultFilePath);
+			const resultContent = await workspace.fs.readFile(resultUri);
+			const resultJson = JSON.parse(new TextDecoder('utf-8').decode(resultContent));
+
+			// Check the result field in the JSON
+			// Expected structure: { result: { result: "SUCCESS" | "FAILURE" | ... } }
+			const result = resultJson?.result?.result;
+			if (result === 'SUCCESS') {
+				return 'success';
+			} else if (result) {
+				return 'failure';
+			}
+			return 'none';
+		} catch (error) {
+			KaotoOutputChannel.logWarning(`Could not read test result for ${testFilePath}: ${error}`);
+			return 'none';
+		}
 	}
 }

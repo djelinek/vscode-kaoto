@@ -55,7 +55,7 @@ import { Folder } from '../views/integrationTreeItems/Folder';
 import { TestsProvider } from '../views/providers/TestsProvider';
 import { NewCamelTestCommand } from '../commands/NewCamelTestCommand';
 import { CamelTestRunJBangTask } from '../tasks/CamelTestRunJBangTask';
-import { Test } from 'src/views/testTreeItems/Test';
+import { Test } from '../views/testTreeItems/Test';
 
 export class ExtensionContextHandler {
 	protected kieEditorStore: KogitoVsCode.VsCodeKieEditorStore;
@@ -262,6 +262,7 @@ export class ExtensionContextHandler {
 				await this.sendCommandTrackingEvent(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT);
 			}),
 		);
+
 		const TESTS_RUN_COMMAND_ID: string = 'kaoto.tests.run';
 		this.context.subscriptions.push(
 			vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
@@ -274,6 +275,13 @@ export class ExtensionContextHandler {
 				try {
 					const runTask = await CamelTestRunJBangTask.create(filePath);
 					await runTask.executeAndWaitWithProgress(`Running test: ${fileName}`);
+
+					// Read and apply test result
+					const testResult = await testsProvider.readTestResult(filePath);
+					testsProvider.setTestResult(filePath, testResult);
+				} catch {
+					// If execution failed, mark as failure
+					testsProvider.setTestResult(filePath, 'failure');
 				} finally {
 					// Always reset the running state
 					testsProvider.setTestRunning(filePath, false);
