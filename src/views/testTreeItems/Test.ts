@@ -31,7 +31,7 @@ export class Test extends TreeItem {
 		super(basename(fileUri.fsPath), TreeItemCollapsibleState.None);
 		this.resourceUri = fileUri;
 		this.tooltip = fileUri.fsPath;
-		this.iconPath = new ThemeIcon('symbol-file');
+		this.iconPath = new ThemeIcon('test-view-icon');
 		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [fileUri] };
 		this.contextValue = Test.CONTEXT_TEST_FILE;
 	}

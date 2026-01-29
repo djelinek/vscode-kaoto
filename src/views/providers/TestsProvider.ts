@@ -21,7 +21,7 @@ import { KaotoOutputChannel } from '../../extension/KaotoOutputChannel';
 import { dirname, basename, join } from 'path';
 
 export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
-	private static readonly FILE_PATTERN = '{**/*.citrus.yaml,**/*IT.yaml,**/*test.yaml}';
+	private static readonly FILE_PATTERN = '{**/*.citrus.yaml}';
 	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**,**/.mvn/**}';
 
 	/** Cache of file paths to Test items for efficient lookup and single-item refresh */
@@ -134,25 +134,10 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	 */
 	async readTestResult(testFilePath: string): Promise<TestResult> {
 		try {
-			// Build the result file path
-			// Test file patterns and their result file names:
-			// - {dir}/{name}.test.yaml -> {dir}/.citrus-jbang/citrus-reports/{name}.test-flow.json
-			// - {dir}/{name}.citrus.yaml -> {dir}/.citrus-jbang/citrus-reports/{name}-flow.json
 			const testDir = dirname(testFilePath);
-			const fileName = basename(testFilePath);
+			const fileName = basename(testFilePath, '.yaml'); // e.g., "name.citrus.yaml" -> "name.citrus"
 
-			// Determine the base name for the result file
-			let resultBaseName: string;
-			if (fileName.endsWith('.citrus.yaml')) {
-				resultBaseName = fileName.slice(0, -'.citrus.yaml'.length);
-			} else if (fileName.endsWith('.test.yaml')) {
-				resultBaseName = fileName.slice(0, -'.yaml'.length); // Keep ".test" part
-			} else {
-				// Fallback for other patterns like *IT.yaml
-				resultBaseName = basename(testFilePath, '.yaml');
-			}
-
-			const resultFilePath = join(testDir, '.citrus-jbang', 'citrus-reports', `${resultBaseName}-flow.json`);
+			const resultFilePath = join(testDir, '.citrus-jbang', 'citrus-reports', `${fileName}-flow.json`);
 
 			const resultUri = Uri.file(resultFilePath);
 			const resultContent = await workspace.fs.readFile(resultUri);
