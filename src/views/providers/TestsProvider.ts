@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { commands, TreeItem, Uri, workspace } from 'vscode';
+import { commands, RelativePattern, TreeItem, Uri, workspace } from 'vscode';
 import { AbstractFolderTreeProvider } from './AbstractFolderTreeProvider';
 import { Test, TestResult } from '../testTreeItems/Test';
 import { TestFolder } from '../testTreeItems/TestFolder';
@@ -159,5 +159,17 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 			KaotoOutputChannel.logWarning(`Could not read test result for ${testFilePath}: ${error}`);
 			return 'none';
 		}
+	}
+
+	/**
+	 * Find all test files under a specific folder path
+	 * @param folderPath The folder path to search in
+	 * @returns Array of test file paths
+	 */
+	async getTestFilesInFolder(folderPath: string): Promise<string[]> {
+		const folderUri = Uri.file(folderPath);
+		const pattern = new RelativePattern(folderUri, TestsProvider.FILE_PATTERN);
+		const files = await workspace.findFiles(pattern, this.getExcludePattern());
+		return files.map((file) => file.fsPath);
 	}
 }

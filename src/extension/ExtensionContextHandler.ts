@@ -55,6 +55,8 @@ import { Folder } from '../views/integrationTreeItems/Folder';
 import { TestsProvider } from '../views/providers/TestsProvider';
 import { NewCamelTestCommand } from '../commands/NewCamelTestCommand';
 import { CamelTestRunJBangTask } from '../tasks/CamelTestRunJBangTask';
+import { CamelTestRunFolderJBangTask } from '../tasks/CamelTestRunFolderJBangTask';
+import { TestFolder } from '../views/testTreeItems/TestFolder';
 import { Test } from '../views/testTreeItems/Test';
 import { AbstractFolderTreeProvider } from 'src/views/providers/AbstractFolderTreeProvider';
 
@@ -302,6 +304,50 @@ export class ExtensionContextHandler {
 				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
 			}),
 		);
+
+		const TESTS_RUN_FOLDER_COMMAND_ID: string = 'kaoto.tests.run.folder';
+		this.context.subscriptions.push(
+			vscode.commands.registerCommand(TESTS_RUN_FOLDER_COMMAND_ID, async (folder: TestFolder) => {
+				const folderPath = folder.folderUri.fsPath;
+				const folderName = folderPath.split('/').pop() || 'tests';
+
+				// Find all test files in the folder
+				const testFilePaths = await testsProvider.getTestFilesInFolder(folderPath);
+				if (testFilePaths.length === 0) {
+					vscode.window.showInformationMessage(`No test files found in folder: ${folderName}`);
+					return;
+				}
+
+				// Mark all test items as running
+				for (const testPath of testFilePaths) {
+					testsProvider.setTestRunning(testPath, true);
+				}
+
+				try {
+					const runTask = await CamelTestRunFolderJBangTask.create(folderPath);
+					await runTask.executeAndWaitWithProgress(`Running tests in: ${folderName}`);
+
+					// Read and apply test results for all tests
+					for (const testPath of testFilePaths) {
+						const testResult = await testsProvider.readTestResult(testPath);
+						testsProvider.setTestResult(testPath, testResult);
+					}
+				} catch {
+					// If execution failed, mark all as failure
+					for (const testPath of testFilePaths) {
+						testsProvider.setTestResult(testPath, 'failure');
+					}
+				} finally {
+					// Always reset the running state for all tests
+					for (const testPath of testFilePaths) {
+						testsProvider.setTestRunning(testPath, false);
+					}
+				}
+
+				await this.sendCommandTrackingEvent(TESTS_RUN_FOLDER_COMMAND_ID);
+			}),
+		);
+
 		this.registerViewItemContextMenu(testsProvider);
 	}
 

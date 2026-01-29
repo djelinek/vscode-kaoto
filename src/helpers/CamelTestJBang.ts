@@ -40,4 +40,17 @@ export class CamelTestJBang extends CamelJBang {
 			shellExecOptions,
 		);
 	}
+
+	public async runFolder(cwd: string): Promise<ShellExecution> {
+		const shellExecOptions: ShellExecutionOptions = {
+			cwd: cwd,
+		};
+		return new ShellExecution(
+			this.jbang,
+			[...this.defaultJbangArgs, 'test', 'run', '*'].filter(function (arg) {
+				return arg !== undefined && arg !== null && arg !== ''; // remove ALL empty values ("", null, undefined and 0)
+			}),
+			shellExecOptions,
+		);
+	}
 }

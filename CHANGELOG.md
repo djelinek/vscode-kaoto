@@ -5,7 +5,7 @@
 - export Maven projects with predefined VS Code launch configurations for easy deployment to OpenShift
 - Add Tests section into Kaoto view
   - create new tests
-  - run individual tests
+  - run individual or all tests
   - check test results
 
 # 2.9.0
