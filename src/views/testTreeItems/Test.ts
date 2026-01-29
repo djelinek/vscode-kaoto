@@ -19,21 +19,30 @@ import { TreeItem, TreeItemCollapsibleState, Uri, ThemeIcon, ThemeColor } from '
 export type TestResult = 'none' | 'success' | 'failure';
 
 export class Test extends TreeItem {
+	// Context values for standalone tests (not under maven project) - can be run
 	private static readonly CONTEXT_TEST_FILE = 'citrus-test-file';
 	private static readonly CONTEXT_TEST_FILE_RUNNING = 'citrus-test-file-running';
 	private static readonly CONTEXT_TEST_FILE_PASSED = 'citrus-test-file-passed';
 	private static readonly CONTEXT_TEST_FILE_FAILED = 'citrus-test-file-failed';
 
+	// Context value for tests under maven project (inline run button hidden, cannot be run)
+	private static readonly CONTEXT_TEST_FILE_MAVEN = 'citrus-test-file-maven';
+
 	private _isRunning: boolean = false;
 	private _result: TestResult = 'none';
+	private readonly _isUnderMavenRoot: boolean;
 
-	constructor(public readonly fileUri: Uri) {
+	constructor(
+		public readonly fileUri: Uri,
+		isUnderMavenRoot: boolean = false,
+	) {
 		super(basename(fileUri.fsPath), TreeItemCollapsibleState.None);
+		this._isUnderMavenRoot = isUnderMavenRoot;
 		this.resourceUri = fileUri;
 		this.tooltip = fileUri.fsPath;
 		this.iconPath = new ThemeIcon('test-view-icon');
 		this.command = { command: 'vscode.open', title: 'Open with Editor', arguments: [fileUri] };
-		this.contextValue = Test.CONTEXT_TEST_FILE;
+		this.contextValue = isUnderMavenRoot ? Test.CONTEXT_TEST_FILE_MAVEN : Test.CONTEXT_TEST_FILE;
 	}
 
 	get isRunning(): boolean {
@@ -45,10 +54,13 @@ export class Test extends TreeItem {
 	}
 
 	/**
-	 * Set the running state of the test
+	 * Set the running state of the test (only applicable for standalone tests)
 	 * @param running Whether the test is running
 	 */
 	setRunning(running: boolean): void {
+		if (this._isUnderMavenRoot) {
+			return; // Tests under Maven cannot be run
+		}
 		this._isRunning = running;
 		if (running) {
 			this.iconPath = new ThemeIcon('sync~spin');
@@ -61,10 +73,13 @@ export class Test extends TreeItem {
 	}
 
 	/**
-	 * Set the test result and update the visual state
+	 * Set the test result and update the visual state (only applicable for standalone tests)
 	 * @param result The test result
 	 */
 	setResult(result: TestResult): void {
+		if (this._isUnderMavenRoot) {
+			return; // Tests under Maven cannot have results
+		}
 		this._result = result;
 		if (!this._isRunning) {
 			this.applyResultState();

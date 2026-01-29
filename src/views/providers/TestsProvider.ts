@@ -50,7 +50,7 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 		return new TestFolder(name, folderUri, isUnderMavenRoot, isMavenRoot, isWorkspaceRoot);
 	}
 
-	protected async toTreeItemForFile(file: Uri, _isUnderMavenRoot: boolean, _isTopLevelWithinWorkspace: boolean): Promise<TreeItem> {
+	protected async toTreeItemForFile(file: Uri, isUnderMavenRoot: boolean, _isTopLevelWithinWorkspace: boolean): Promise<TreeItem> {
 		// Check if we have a cached item for this file
 		const cachedTest = this.testItemCache.get(file.fsPath);
 		if (cachedTest) {
@@ -58,7 +58,7 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 		}
 
 		// Create new test item and cache it
-		const test = new Test(file);
+		const test = new Test(file, isUnderMavenRoot);
 
 		// Apply any stored result from previous runs
 		const storedResult = this.testResults.get(file.fsPath);
