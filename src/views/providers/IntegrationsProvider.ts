@@ -27,6 +27,9 @@ import { IntegrationFile, IntegrationFileIcon, IntegrationFileIconType, Integrat
 import { AbstractFolderTreeProvider } from './AbstractFolderTreeProvider';
 
 export class IntegrationsProvider extends AbstractFolderTreeProvider<Folder> {
+	public readonly VIEW_ITEM_SHOW_SOURCE_COMMAND_ID: string = 'kaoto.integrations.showSource';
+	public readonly VIEW_ITEM_DELETE_COMMAND_ID: string = 'kaoto.integrations.delete';
+
 	public static readonly EXCLUDE_PATTERN =
 		'{**/node_modules/**,**/.vscode/**,**/out/**,**/.camel-jbang*/**,**/target/**,**/.mvn/**,**/.citrus-jbang*/**,**/test/**,**/tests/**}';
 

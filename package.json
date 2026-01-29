@@ -444,6 +444,18 @@
         "title": "Run",
         "category": "Kaoto",
         "icon": "$(run)"
+      },
+      {
+        "command": "kaoto.tests.showSource",
+        "title": "Show Source",
+        "category": "Kaoto",
+        "icon": "$(code)"
+      },
+      {
+        "command": "kaoto.tests.delete",
+        "title": "Delete",
+        "category": "Kaoto",
+        "icon": "$(trash)"
       }
     ],
     "keybindings": [
@@ -585,6 +597,14 @@
         {
           "command": "kaoto.citrus.jbang.init.test",
           "when": "false"
+        },
+        {
+          "command": "kaoto.tests.showSource",
+          "when": "false"
+        },
+        {
+          "command": "kaoto.tests.delete",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -723,6 +743,16 @@
           "command": "kaoto.tests.run",
           "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file/",
           "group": "inline@1"
+        },
+        {
+          "command": "kaoto.tests.showSource",
+          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kaoto.tests.delete",
+          "when": "view == kaoto.tests && (viewItem =~ /^citrus-test-file/ || viewItem == test-folder)",
+          "group": "navigation@2"
         }
       ]
     },
@@ -746,7 +776,7 @@
       },
       {
         "view": "kaoto.tests",
-        "contents": "In order to start with Citrus, you can create a new Citrus Test file.\n[New Citrus Test...](command:kaoto.citrus.jbang.init.test)",
+        "contents": "In order to start with Citrus, you can create a new Citrus Test file.\n[New Citrus Test...](command:kaoto.citrus.jbang.init.test)\nTo learn more about Camel Testing [read docs](https://camel.apache.org/manual/camel-jbang-test.html).",
         "when": "!virtualWorkspace && kaoto.jbangAvailable && workspaceFolderCount > 0"
       }
     ],

@@ -31,6 +31,9 @@ type TreeItemType = TreeItem | undefined | null | void;
  * Provides common logic for building folder/file trees from workspace files.
  */
 export abstract class AbstractFolderTreeProvider<TFolder extends IFolderTreeItem> implements TreeDataProvider<TreeItem> {
+	public abstract readonly VIEW_ITEM_SHOW_SOURCE_COMMAND_ID: string;
+	public abstract readonly VIEW_ITEM_DELETE_COMMAND_ID: string;
+
 	protected readonly _onDidChangeTreeData: EventEmitter<TreeItemType> = new EventEmitter<TreeItemType>();
 	readonly onDidChangeTreeData: Event<TreeItemType> = this._onDidChangeTreeData.event;
 

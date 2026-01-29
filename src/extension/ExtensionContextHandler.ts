@@ -56,6 +56,7 @@ import { TestsProvider } from '../views/providers/TestsProvider';
 import { NewCamelTestCommand } from '../commands/NewCamelTestCommand';
 import { CamelTestRunJBangTask } from '../tasks/CamelTestRunJBangTask';
 import { Test } from '../views/testTreeItems/Test';
+import { AbstractFolderTreeProvider } from 'src/views/providers/AbstractFolderTreeProvider';
 
 export class ExtensionContextHandler {
 	protected kieEditorStore: KogitoVsCode.VsCodeKieEditorStore;
@@ -242,7 +243,8 @@ export class ExtensionContextHandler {
 		};
 		const refreshCommand = vscode.commands.registerCommand('kaoto.integrations.refresh', () => integrationsProvider.refresh());
 		this.context.subscriptions.push(integrationsTreeView, dispose, refreshCommand);
-		this.registerIntegrationsItemsContextMenu(integrationsProvider);
+		this.registerIntegrationsItemsContextMenu();
+		this.registerViewItemContextMenu(integrationsProvider);
 	}
 
 	public registerTestsView() {
@@ -300,6 +302,7 @@ export class ExtensionContextHandler {
 				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
 			}),
 		);
+		this.registerViewItemContextMenu(testsProvider);
 	}
 
 	public registerDeploymentsView(portManager: PortManager) {
@@ -333,22 +336,30 @@ export class ExtensionContextHandler {
 		this.registerDeploymentsRouteCommands(deploymentsProvider);
 	}
 
-	private registerIntegrationsItemsContextMenu(provider: IntegrationsProvider) {
-		const INTEGRATIONS_SHOW_SOURCE_COMMAND_ID: string = 'kaoto.integrations.showSource';
-		const INTEGRATIONS_DELETE_COMMAND_ID: string = 'kaoto.integrations.delete';
+	private registerIntegrationsItemsContextMenu() {
 		const INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID: string = 'kaoto.integrations.updateDependencies';
 
+		// register update dependencies menu button
+		const updateDependenciesCommand = vscode.commands.registerCommand(INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID, async (integration: Integration) => {
+			await this.updateCamelDependencies(integration.filepath.fsPath);
+			await this.sendCommandTrackingEvent(INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID);
+		});
+
+		this.context.subscriptions.push(updateDependenciesCommand);
+	}
+
+	private registerViewItemContextMenu(provider: AbstractFolderTreeProvider<any>) {
 		// register show source menu button
-		const showSourceCommand = vscode.commands.registerCommand(INTEGRATIONS_SHOW_SOURCE_COMMAND_ID, async (item: vscode.TreeItem) => {
+		const showSourceCommand = vscode.commands.registerCommand(provider.VIEW_ITEM_SHOW_SOURCE_COMMAND_ID, async (item: vscode.TreeItem) => {
 			if (!item.resourceUri) {
 				return;
 			}
 			await vscode.window.showTextDocument(item.resourceUri);
-			await this.sendCommandTrackingEvent(INTEGRATIONS_SHOW_SOURCE_COMMAND_ID);
+			await this.sendCommandTrackingEvent(provider.VIEW_ITEM_SHOW_SOURCE_COMMAND_ID);
 		});
 
 		// register delete menu button
-		const deleteCommand = vscode.commands.registerCommand(INTEGRATIONS_DELETE_COMMAND_ID, async (item: vscode.TreeItem) => {
+		const deleteCommand = vscode.commands.registerCommand(provider.VIEW_ITEM_DELETE_COMMAND_ID, async (item: vscode.TreeItem) => {
 			if (!item.resourceUri) {
 				return;
 			}
@@ -359,16 +370,10 @@ export class ExtensionContextHandler {
 				provider.refresh();
 				KaotoOutputChannel.logInfo(`Item '${item.resourceUri.fsPath}' was deleted.`);
 			}
-			await this.sendCommandTrackingEvent(INTEGRATIONS_DELETE_COMMAND_ID);
+			await this.sendCommandTrackingEvent(provider.VIEW_ITEM_DELETE_COMMAND_ID);
 		});
 
-		// register update dependencies menu button
-		const updateDependenciesCommand = vscode.commands.registerCommand(INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID, async (integration: Integration) => {
-			await this.updateCamelDependencies(integration.filepath.fsPath);
-			await this.sendCommandTrackingEvent(INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID);
-		});
-
-		this.context.subscriptions.push(showSourceCommand, deleteCommand, updateDependenciesCommand);
+		this.context.subscriptions.push(showSourceCommand, deleteCommand);
 	}
 
 	private async updateCamelDependencies(docPath: string): Promise<void> {

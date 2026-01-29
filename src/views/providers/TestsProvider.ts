@@ -21,6 +21,9 @@ import { KaotoOutputChannel } from '../../extension/KaotoOutputChannel';
 import { dirname, basename, join } from 'path';
 
 export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
+	public readonly VIEW_ITEM_SHOW_SOURCE_COMMAND_ID: string = 'kaoto.tests.showSource';
+	public readonly VIEW_ITEM_DELETE_COMMAND_ID: string = 'kaoto.tests.delete';
+
 	private static readonly FILE_PATTERN = '{**/*.citrus.yaml}';
 	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**,**/.mvn/**}';
 
