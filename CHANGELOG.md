@@ -3,6 +3,10 @@
 - Upgrade default Camel JBang version from 4.16.0 to 4.17.0
 - export Maven projects with OpenShift deployment configurations using Camel Kubernetes plugin
 - export Maven projects with predefined VS Code launch configurations for easy deployment to OpenShift
+- Add Tests section into Kaoto view
+  - create new tests
+  - run individual tests
+  - check test results
 
 # 2.9.0
 
