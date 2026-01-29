@@ -256,6 +256,16 @@ export class ExtensionContextHandler {
 		this.context.subscriptions.push({
 			dispose: () => testsProvider.dispose(),
 		});
+
+		// Refresh when view becomes visible to catch file changes made while view was hidden
+		this.context.subscriptions.push(
+			testsTreeView.onDidChangeVisibility((event) => {
+				if (event.visible) {
+					testsProvider.refresh();
+				}
+			}),
+		);
+
 		this.context.subscriptions.push(
 			vscode.commands.registerCommand(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT, async () => {
 				await new NewCamelTestCommand().create();
