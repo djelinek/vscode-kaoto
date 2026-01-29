@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { commands, RelativePattern, TreeItem, Uri, workspace } from 'vscode';
+import { commands, RelativePattern, TreeItem, TreeItemCollapsibleState, Uri, workspace } from 'vscode';
 import { AbstractFolderTreeProvider } from './AbstractFolderTreeProvider';
 import { Test, TestResult } from '../testTreeItems/Test';
 import { TestFolder } from '../testTreeItems/TestFolder';
@@ -24,7 +24,8 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	public readonly VIEW_ITEM_SHOW_SOURCE_COMMAND_ID: string = 'kaoto.tests.showSource';
 	public readonly VIEW_ITEM_DELETE_COMMAND_ID: string = 'kaoto.tests.delete';
 
-	private static readonly FILE_PATTERN = '{**/*.test.yaml,**/*.citrus.yaml}';
+	private static readonly FILE_PATTERN = '{**/*.test.yaml,**/*.citrus.yaml,**/jbang.properties}';
+	private static readonly TEST_FILE_PATTERN = '{**/*.test.yaml,**/*.citrus.yaml}';
 	private static readonly EXCLUDE_PATTERN = '{**/node_modules/**,**/.vscode/**,**/out/**,**/.citrus-jbang*/**,**/target/**,**/.mvn/**}';
 
 	/** Cache of file paths to Test items for efficient lookup and single-item refresh */
@@ -51,6 +52,18 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	protected async toTreeItemForFile(file: Uri, isUnderMavenRoot: boolean, _isTopLevelWithinWorkspace: boolean): Promise<TreeItem> {
+		const fileName = basename(file.fsPath);
+
+		// Handle jbang.properties files - simple tree item with default icon
+		if (fileName === 'jbang.properties') {
+			const item = new TreeItem(fileName, TreeItemCollapsibleState.None);
+			item.resourceUri = file;
+			item.tooltip = file.fsPath;
+			item.command = { command: 'vscode.open', title: 'Open File', arguments: [file] };
+			item.contextValue = 'jbang-properties-file';
+			return item;
+		}
+
 		// Check if we have a cached item for this file
 		const cachedTest = this.testItemCache.get(file.fsPath);
 		if (cachedTest) {
@@ -162,13 +175,14 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	/**
-	 * Find all test files under a specific folder path
+	 * Find all test files under a specific folder path (excludes jbang.properties)
 	 * @param folderPath The folder path to search in
 	 * @returns Array of test file paths
 	 */
 	async getTestFilesInFolder(folderPath: string): Promise<string[]> {
 		const folderUri = Uri.file(folderPath);
-		const pattern = new RelativePattern(folderUri, TestsProvider.FILE_PATTERN);
+		// Use TEST_FILE_PATTERN to only get actual test files, not jbang.properties
+		const pattern = new RelativePattern(folderUri, TestsProvider.TEST_FILE_PATTERN);
 		const files = await workspace.findFiles(pattern, this.getExcludePattern());
 		return files.map((file) => file.fsPath);
 	}

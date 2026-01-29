@@ -765,12 +765,12 @@
         },
         {
           "command": "kaoto.tests.showSource",
-          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file/",
+          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file/ || viewItem == jbang-properties-file",
           "group": "navigation@1"
         },
         {
           "command": "kaoto.tests.delete",
-          "when": "view == kaoto.tests && (viewItem =~ /^citrus-test-file/ || viewItem == test-folder)",
+          "when": "view == kaoto.tests && (viewItem =~ /^citrus-test-file/ || viewItem == test-folder || viewItem == jbang-properties-file || viewItem =~ /^test-folder-maven/)",
           "group": "navigation@2"
         }
       ]
