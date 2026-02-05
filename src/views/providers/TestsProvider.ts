@@ -92,12 +92,22 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	}
 
 	/**
-	 * Override refresh to clear the item cache when a full refresh is triggered
+	 * Override refresh to clear all caches when a full refresh is triggered
 	 * Note: test results are preserved to maintain pass/fail status
 	 */
 	refresh(): void {
 		this.testItemCache.clear();
+		this.invalidateCache();
 		super.refresh();
+	}
+
+	/**
+	 * Remove a specific file from all caches (used when a file is deleted)
+	 * @param filePath The file path to remove from caches
+	 */
+	removeFromCache(filePath: string): void {
+		this.testItemCache.delete(filePath);
+		this.testResults.delete(filePath);
 	}
 
 	/**
@@ -110,8 +120,8 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 		if (testItem) {
 			// Update the running state on the cached item
 			testItem.setRunning(running);
-			// Refresh only this specific item
-			this._onDidChangeTreeData.fire(testItem);
+			// Refresh only this specific item immediately (no debouncing)
+			this.refreshImmediate(testItem);
 		} else {
 			// Fallback: if item not in cache, do a full refresh
 			// This shouldn't normally happen if the test was already displayed
@@ -131,7 +141,8 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 		const testItem = this.testItemCache.get(filePath);
 		if (testItem) {
 			testItem.setResult(result);
-			this._onDidChangeTreeData.fire(testItem);
+			// Refresh only this specific item immediately (no debouncing)
+			this.refreshImmediate(testItem);
 		}
 	}
 
@@ -140,7 +151,7 @@ export class TestsProvider extends AbstractFolderTreeProvider<TestFolder> {
 	 * @param test The test item to refresh
 	 */
 	refreshItem(test: Test): void {
-		this._onDidChangeTreeData.fire(test);
+		this.refreshImmediate(test);
 	}
 
 	/**

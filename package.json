@@ -679,7 +679,7 @@
         {
           "command": "kaoto.citrus.jbang.init.test",
           "group": "navigation",
-          "when": "view == kaoto.tests"
+          "when": "view == kaoto.tests && !virtualWorkspace && kaoto.jbangAvailable && workspaceFolderCount > 0"
         }
       ],
       "view/item/context": [
@@ -726,41 +726,41 @@
         {
           "command": "kaoto.deployments.stop",
           "group": "inline@1",
-          "when": "view == kaoto.deployments && viewItem == parent-localhost"
+          "when": "view == kaoto.deployments && viewItem == parent-localhost && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.deployments.logs",
           "group": "inline@2",
-          "when": "view == kaoto.deployments && viewItem == parent-localhost"
+          "when": "view == kaoto.deployments && viewItem == parent-localhost && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.deployments.route.start",
           "group": "inline@1",
-          "when": "view == kaoto.deployments && viewItem =~ /^.*startEnabled.*$/"
+          "when": "view == kaoto.deployments && viewItem =~ /^.*startEnabled.*$/ && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.deployments.route.resume",
           "group": "inline@2",
-          "when": "view == kaoto.deployments && viewItem =~ /^.*resumeEnabled.*$/"
+          "when": "view == kaoto.deployments && viewItem =~ /^.*resumeEnabled.*$/ && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.deployments.route.suspend",
           "group": "inline@3",
-          "when": "view == kaoto.deployments && viewItem =~ /^.*suspendEnabled.*$/"
+          "when": "view == kaoto.deployments && viewItem =~ /^.*suspendEnabled.*$/ && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.deployments.route.stop",
           "group": "inline@4",
-          "when": "view == kaoto.deployments && viewItem =~ /^.*stopEnabled.*$/"
+          "when": "view == kaoto.deployments && viewItem =~ /^.*stopEnabled.*$/ && kaoto.jbangAvailable"
         },
         {
           "command": "kaoto.tests.run",
-          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file(-running|-passed|-failed)?$/",
+          "when": "view == kaoto.tests && viewItem =~ /^citrus-test-file(-running|-passed|-failed)?$/ && kaoto.jbangAvailable",
           "group": "inline@1"
         },
         {
           "command": "kaoto.tests.run.folder",
-          "when": "view == kaoto.tests && viewItem == test-folder",
+          "when": "view == kaoto.tests && viewItem == test-folder && kaoto.jbangAvailable",
           "group": "inline@1"
         },
         {
@@ -797,6 +797,11 @@
         "view": "kaoto.tests",
         "contents": "In order to start with Citrus, you can create a new Citrus Test file.\n[New Citrus Test...](command:kaoto.citrus.jbang.init.test)\nTo learn more about Camel Testing [read docs](https://camel.apache.org/manual/camel-jbang-test.html).",
         "when": "!virtualWorkspace && kaoto.jbangAvailable && workspaceFolderCount > 0"
+      },
+      {
+        "view": "kaoto.tests",
+        "contents": "You have not yet added a folder to the workspace.\n[Open Folder](command:vscode.openFolder)",
+        "when": "workspaceFolderCount == 0"
       }
     ],
     "configuration": [
@@ -1056,15 +1061,14 @@
           "contextualTitle": "Kaoto",
           "icon": "icons/kaoto.png",
           "initialSize": 2,
-          "when": "!virtualWorkspace && kaoto.jbangAvailable"
+          "when": "!virtualWorkspace"
         },
         {
           "id": "kaoto.tests",
           "name": "Tests",
           "contextualTitle": "Kaoto",
           "icon": "icons/kaoto.png",
-          "initialSize": 2,
-          "when": "!virtualWorkspace && kaoto.jbangAvailable"
+          "initialSize": 2
         },
         {
           "id": "kaoto.help",

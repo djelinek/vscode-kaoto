@@ -47,10 +47,16 @@ export class IntegrationsProvider extends AbstractFolderTreeProvider<Folder> {
 				this.fileWatcher.dispose();
 
 				this.fileWatcher = workspace.createFileSystemWatcher(this.filePattern);
-				this.fileWatcher.onDidChange(this.refresh.bind(this));
-				this.fileWatcher.onDidCreate(this.refresh.bind(this));
-				this.fileWatcher.onDidDelete(this.refresh.bind(this));
+				const invalidateAndRefresh = () => {
+					this.invalidateCache();
+					this.refresh();
+				};
+				this.fileWatcher.onDidChange(invalidateAndRefresh);
+				this.fileWatcher.onDidCreate(invalidateAndRefresh);
+				this.fileWatcher.onDidDelete(invalidateAndRefresh);
 
+				// Invalidate cache and refresh with new pattern
+				this.invalidateCache();
 				this.refresh();
 			}
 		});

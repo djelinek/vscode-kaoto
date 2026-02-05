@@ -37,9 +37,12 @@ export class DeploymentsProvider implements TreeDataProvider<TreeItem> {
 	private autoRefreshHandle?: NodeJS.Timeout;
 	private localhostData = new Map<string, { associatedFile: string; routes: Route[] }>();
 
+	/** Flag to prevent concurrent refresh operations */
+	private isRefreshing = false;
+
 	constructor(private readonly portManager: PortManager) {
 		this.interval = this.getRefreshInterval();
-		this.startAutoRefresh();
+		// Note: Auto-refresh is deferred until first visibility to improve startup performance
 
 		workspace.onDidChangeConfiguration((e) => {
 			if (e.affectsConfiguration(DeploymentsProvider.SETTINGS_REFRESH_INTERVAL)) {
@@ -73,6 +76,11 @@ export class DeploymentsProvider implements TreeDataProvider<TreeItem> {
 	}
 
 	refresh(): void {
+		// Skip if already refreshing to prevent concurrent updates
+		if (this.isRefreshing) {
+			console.log('[DeploymentsProvider] Refresh skipped: already in progress');
+			return;
+		}
 		console.log('[DeploymentsProvider] Refreshing data...');
 		void this.updateData();
 	}
@@ -115,17 +123,26 @@ export class DeploymentsProvider implements TreeDataProvider<TreeItem> {
 	}
 
 	private async updateData(): Promise<void> {
-		this.localhostData = await this.fetchLocalhostRoutes();
+		this.isRefreshing = true;
+		try {
+			this.localhostData = await this.fetchLocalhostRoutes();
 
-		if (this.portManager.getUsedPorts().size > 0) {
-			this.startAutoRefresh();
-		} else {
-			this.stopAutoRefresh();
+			if (this.portManager.getUsedPorts().size > 0) {
+				this.startAutoRefresh();
+			} else {
+				this.stopAutoRefresh();
+			}
+			this._onDidChangeTreeData.fire();
+		} finally {
+			this.isRefreshing = false;
 		}
-		this._onDidChangeTreeData.fire();
 	}
 
-	private startAutoRefresh(): void {
+	/**
+	 * Start auto-refresh if there are active ports.
+	 * Called when view becomes visible or when tasks start.
+	 */
+	public startAutoRefresh(): void {
 		console.log('[DeploymentsProvider] Auto-refreshing data...');
 		this.stopAutoRefresh();
 
@@ -138,7 +155,10 @@ export class DeploymentsProvider implements TreeDataProvider<TreeItem> {
 		this.autoRefreshHandle = setInterval(() => this.updateData(), this.interval);
 	}
 
-	private stopAutoRefresh(): void {
+	/**
+	 * Stop auto-refresh. Called when view becomes hidden.
+	 */
+	public stopAutoRefresh(): void {
 		if (this.autoRefreshHandle) {
 			clearInterval(this.autoRefreshHandle);
 			this.autoRefreshHandle = undefined;

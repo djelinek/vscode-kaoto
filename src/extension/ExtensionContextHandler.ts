@@ -369,10 +369,10 @@ export class ExtensionContextHandler {
 		const refreshVisibilityChange = deploymentsTreeView.onDidChangeVisibility((event) => {
 			if (event.visible) {
 				this.deploymentsProvider.refresh();
+				this.deploymentsProvider.startAutoRefresh();
 			} else {
-				// stop auto-refresh when a view is not visible
-				console.warn('[DeploymentsProvider] Auto-refresh stopped');
-				this.deploymentsProvider.dispose();
+				// Pause auto-refresh when view is not visible (don't dispose the provider)
+				this.deploymentsProvider.stopAutoRefresh();
 			}
 		});
 

@@ -82,10 +82,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	/*
 	 * register all views (Integrations, Deployments, Tests, Help & Feedback) first to avoid race conditions
 	 */
+	contextHandler.registerHelpAndFeedbackView();
 	contextHandler.registerIntegrationsView();
 	contextHandler.registerDeploymentsView(portManager);
 	contextHandler.registerTestsView();
-	contextHandler.registerHelpAndFeedbackView();
 
 	/*
 	 * register commands for 'Integrations' view

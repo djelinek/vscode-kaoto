@@ -39,14 +39,37 @@ export abstract class AbstractFolderTreeProvider<TFolder extends IFolderTreeItem
 
 	protected fileWatcher!: FileSystemWatcher;
 
+	/** Debounce timer for refresh operations */
+	private refreshDebounceTimer?: NodeJS.Timeout;
+	private readonly DEBOUNCE_MS = 300;
+
+	/** Cached file search results */
+	private cachedFiles: Uri[] | undefined;
+	private cacheInvalidated = true;
+
+	/** Cache for pom.xml existence checks */
+	private readonly pomXmlCache = new Map<string, boolean>();
+
 	/**
 	 * Initialize the file watcher. Must be called by subclasses after their constructor initialization.
 	 */
 	protected initFileWatcher(): void {
 		this.fileWatcher = workspace.createFileSystemWatcher(this.getFilePattern());
-		this.fileWatcher.onDidChange(this.refresh.bind(this));
-		this.fileWatcher.onDidCreate(this.refresh.bind(this));
-		this.fileWatcher.onDidDelete(this.refresh.bind(this));
+		const invalidateAndRefresh = () => {
+			this.invalidateCache();
+			this.refresh();
+		};
+		this.fileWatcher.onDidChange(invalidateAndRefresh);
+		this.fileWatcher.onDidCreate(invalidateAndRefresh);
+		this.fileWatcher.onDidDelete(invalidateAndRefresh);
+	}
+
+	/**
+	 * Invalidate the cached file search results
+	 */
+	protected invalidateCache(): void {
+		this.cacheInvalidated = true;
+		this.pomXmlCache.clear();
 	}
 
 	/**
@@ -89,11 +112,35 @@ export abstract class AbstractFolderTreeProvider<TFolder extends IFolderTreeItem
 	 */
 	protected setContext?(hasFiles: boolean): void;
 
+	/**
+	 * Refresh the tree view with debouncing to prevent rapid successive refreshes
+	 */
 	refresh(): void {
-		this._onDidChangeTreeData.fire();
+		if (this.refreshDebounceTimer) {
+			clearTimeout(this.refreshDebounceTimer);
+		}
+		this.refreshDebounceTimer = setTimeout(() => {
+			this._onDidChangeTreeData.fire();
+		}, this.DEBOUNCE_MS);
+	}
+
+	/**
+	 * Force an immediate refresh without debouncing (for specific item updates)
+	 * @param item Optional specific item to refresh
+	 */
+	protected refreshImmediate(item?: TreeItem): void {
+		if (this.refreshDebounceTimer) {
+			clearTimeout(this.refreshDebounceTimer);
+			this.refreshDebounceTimer = undefined;
+		}
+		this._onDidChangeTreeData.fire(item);
 	}
 
 	dispose(): void {
+		if (this.refreshDebounceTimer) {
+			clearTimeout(this.refreshDebounceTimer);
+			this.refreshDebounceTimer = undefined;
+		}
 		this._onDidChangeTreeData.dispose();
 		this.fileWatcher?.dispose();
 	}
@@ -103,7 +150,13 @@ export abstract class AbstractFolderTreeProvider<TFolder extends IFolderTreeItem
 	}
 
 	async getChildren(element?: TreeItem): Promise<TreeItem[]> {
-		const files = await workspace.findFiles(this.getFilePattern(), this.getExcludePattern());
+		// Use cached files if available, otherwise fetch and cache
+		if (this.cacheInvalidated || !this.cachedFiles) {
+			this.cachedFiles = await workspace.findFiles(this.getFilePattern(), this.getExcludePattern());
+			this.cacheInvalidated = false;
+		}
+
+		const files = this.cachedFiles;
 
 		if (this.setContext) {
 			this.setContext(files.length > 0);
@@ -219,16 +272,23 @@ export abstract class AbstractFolderTreeProvider<TFolder extends IFolderTreeItem
 	}
 
 	/**
-	 * Check if a pom.xml file exists in the given directory
+	 * Check if a pom.xml file exists in the given directory (with caching)
 	 * @param dirPath The directory path to check
 	 * @returns True if pom.xml exists, false otherwise
 	 */
 	protected async checkPomXmlExists(dirPath: string): Promise<boolean> {
+		// Return cached result if available
+		if (this.pomXmlCache.has(dirPath)) {
+			return this.pomXmlCache.get(dirPath)!;
+		}
+
 		try {
 			const pomUri = Uri.file(join(dirPath, 'pom.xml'));
 			await workspace.fs.stat(pomUri);
+			this.pomXmlCache.set(dirPath, true);
 			return true;
 		} catch {
+			this.pomXmlCache.set(dirPath, false);
 			return false;
 		}
 	}
