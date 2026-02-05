@@ -64,6 +64,9 @@ export class ExtensionContextHandler {
 	protected kieEditorStore: KogitoVsCode.VsCodeKieEditorStore;
 	protected context: vscode.ExtensionContext;
 
+	protected testsProvider: TestsProvider;
+	protected deploymentsProvider: DeploymentsProvider;
+
 	constructor(
 		context: vscode.ExtensionContext,
 		kieEditorStore: KogitoVsCode.VsCodeKieEditorStore,
@@ -245,144 +248,138 @@ export class ExtensionContextHandler {
 		};
 		const refreshCommand = vscode.commands.registerCommand('kaoto.integrations.refresh', () => integrationsProvider.refresh());
 		this.context.subscriptions.push(integrationsTreeView, dispose, refreshCommand);
-		this.registerIntegrationsItemsContextMenu();
+
 		this.registerViewItemContextMenu(integrationsProvider);
 	}
 
 	public registerTestsView() {
-		const testsProvider = new TestsProvider();
+		this.testsProvider = new TestsProvider();
 		const testsTreeView = vscode.window.createTreeView('kaoto.tests', {
-			treeDataProvider: testsProvider,
+			treeDataProvider: this.testsProvider,
 			showCollapseAll: true,
 		});
-		this.context.subscriptions.push(testsTreeView);
-		this.context.subscriptions.push(vscode.commands.registerCommand('kaoto.tests.refresh', () => testsProvider.refresh()));
-		this.context.subscriptions.push({
-			dispose: () => testsProvider.dispose(),
+		const dispose = {
+			dispose: () => this.testsProvider.dispose(),
+		};
+
+		const refreshOnVisibilityChange = testsTreeView.onDidChangeVisibility((event) => {
+			if (event.visible) {
+				this.testsProvider.refresh();
+			}
 		});
+		const refreshCommand = vscode.commands.registerCommand('kaoto.tests.refresh', () => this.testsProvider.refresh());
+		this.context.subscriptions.push(testsTreeView, dispose, refreshCommand, refreshOnVisibilityChange);
 
-		// Refresh when view becomes visible to catch file changes made while view was hidden
-		this.context.subscriptions.push(
-			testsTreeView.onDidChangeVisibility((event) => {
-				if (event.visible) {
-					testsProvider.refresh();
-				}
-			}),
-		);
+		this.registerViewItemContextMenu(this.testsProvider);
+	}
 
+	public registerTestsInitCommands() {
 		this.context.subscriptions.push(
 			vscode.commands.registerCommand(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT, async () => {
 				await new NewCamelTestCommand().create();
 				await this.sendCommandTrackingEvent(NewCamelTestCommand.ID_COMMAND_CITRUS_INIT);
 			}),
 		);
+	}
 
+	public registerTestsRunCommands() {
 		const TESTS_RUN_COMMAND_ID: string = 'kaoto.tests.run';
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
-				const filePath = test.resourceUri?.fsPath as string;
-				const fileName = filePath.split('/').pop() || 'test';
+		const runCommand = vscode.commands.registerCommand(TESTS_RUN_COMMAND_ID, async (test: Test) => {
+			const filePath = test.resourceUri?.fsPath as string;
+			const fileName = filePath.split('/').pop() || 'test';
 
-				// Show spinning indicator on the tree item
-				testsProvider.setTestRunning(filePath, true);
+			// Show spinning indicator on the tree item
+			this.testsProvider.setTestRunning(filePath, true);
 
-				try {
-					const runTask = await CamelTestRunJBangTask.create(filePath);
-					await runTask.executeAndWaitWithProgress(`Running test: ${fileName}`);
+			try {
+				const runTask = await CamelTestRunJBangTask.create(filePath);
+				await runTask.executeAndWaitWithProgress(`Running test: ${fileName}`);
 
-					// Read and apply test result
-					const testResult = await testsProvider.readTestResult(filePath);
-					testsProvider.setTestResult(filePath, testResult);
-				} catch {
-					// If execution failed, mark as failure
-					testsProvider.setTestResult(filePath, 'failure');
-				} finally {
-					// Always reset the running state
-					testsProvider.setTestRunning(filePath, false);
-				}
+				// Read and apply test result
+				const testResult = await this.testsProvider.readTestResult(filePath);
+				this.testsProvider.setTestResult(filePath, testResult);
+			} catch {
+				// If execution failed, mark as failure
+				this.testsProvider.setTestResult(filePath, 'failure');
+			} finally {
+				// Always reset the running state
+				this.testsProvider.setTestRunning(filePath, false);
+			}
 
-				await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
-			}),
-		);
+			await this.sendCommandTrackingEvent(TESTS_RUN_COMMAND_ID);
+		});
 
 		const TESTS_RUN_FOLDER_COMMAND_ID: string = 'kaoto.tests.run.folder';
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(TESTS_RUN_FOLDER_COMMAND_ID, async (folder: TestFolder) => {
-				const folderPath = folder.folderUri.fsPath;
-				const folderName = folderPath.split('/').pop() || 'tests';
+		const runFolderCommand = vscode.commands.registerCommand(TESTS_RUN_FOLDER_COMMAND_ID, async (folder: TestFolder) => {
+			const folderPath = folder.folderUri.fsPath;
+			const folderName = folderPath.split('/').pop() || 'tests';
 
-				// Find all test files in the folder
-				const testFilePaths = await testsProvider.getTestFilesInFolder(folderPath);
-				if (testFilePaths.length === 0) {
-					vscode.window.showInformationMessage(`No test files found in folder: ${folderName}`);
-					return;
-				}
+			// Find all test files in the folder
+			const testFilePaths = await this.testsProvider.getTestFilesInFolder(folderPath);
+			if (testFilePaths.length === 0) {
+				vscode.window.showInformationMessage(`No test files found in folder: ${folderName}`);
+				return;
+			}
 
-				// Mark all test items as running
+			// Mark all test items as running
+			for (const testPath of testFilePaths) {
+				this.testsProvider.setTestRunning(testPath, true);
+			}
+
+			try {
+				const runTask = await CamelTestRunFolderJBangTask.create(folderPath);
+				await runTask.executeAndWaitWithProgress(`Running tests in: ${folderName}`);
+
+				// Read and apply test results for all tests
 				for (const testPath of testFilePaths) {
-					testsProvider.setTestRunning(testPath, true);
+					const testResult = await this.testsProvider.readTestResult(testPath);
+					this.testsProvider.setTestResult(testPath, testResult);
 				}
-
-				try {
-					const runTask = await CamelTestRunFolderJBangTask.create(folderPath);
-					await runTask.executeAndWaitWithProgress(`Running tests in: ${folderName}`);
-
-					// Read and apply test results for all tests
-					for (const testPath of testFilePaths) {
-						const testResult = await testsProvider.readTestResult(testPath);
-						testsProvider.setTestResult(testPath, testResult);
-					}
-				} catch {
-					// If execution failed, mark all as failure
-					for (const testPath of testFilePaths) {
-						testsProvider.setTestResult(testPath, 'failure');
-					}
-				} finally {
-					// Always reset the running state for all tests
-					for (const testPath of testFilePaths) {
-						testsProvider.setTestRunning(testPath, false);
-					}
+			} catch {
+				// If execution failed, mark all as failure
+				for (const testPath of testFilePaths) {
+					this.testsProvider.setTestResult(testPath, 'failure');
 				}
+			} finally {
+				// Always reset the running state for all tests
+				for (const testPath of testFilePaths) {
+					this.testsProvider.setTestRunning(testPath, false);
+				}
+			}
 
-				await this.sendCommandTrackingEvent(TESTS_RUN_FOLDER_COMMAND_ID);
-			}),
-		);
+			await this.sendCommandTrackingEvent(TESTS_RUN_FOLDER_COMMAND_ID);
+		});
 
-		this.registerViewItemContextMenu(testsProvider);
+		this.context.subscriptions.push(runCommand, runFolderCommand);
 	}
 
 	public registerDeploymentsView(portManager: PortManager) {
-		const deploymentsProvider = new DeploymentsProvider(portManager);
-		this.context.subscriptions.push(vscode.commands.registerCommand('kaoto.deployments.refresh', () => deploymentsProvider.refresh()));
-		this.context.subscriptions.push({
-			dispose: () => deploymentsProvider.dispose(),
-		});
+		this.deploymentsProvider = new DeploymentsProvider(portManager);
 
 		const deploymentsTreeView = vscode.window.createTreeView('kaoto.deployments', {
-			treeDataProvider: deploymentsProvider,
+			treeDataProvider: this.deploymentsProvider,
 			showCollapseAll: true,
 		});
-		this.context.subscriptions.push(deploymentsTreeView);
 
-		// stop auto-refresh when a view is not visible
-		this.context.subscriptions.push(
-			deploymentsTreeView.onDidChangeVisibility((event) => {
-				if (event.visible) {
-					deploymentsProvider.refresh();
-				} else {
-					console.warn('[DeploymentsProvider] Auto-refresh stopped');
-					deploymentsProvider.dispose();
-				}
-			}),
-		);
+		const deploymentsRefreshCommand = vscode.commands.registerCommand('kaoto.deployments.refresh', () => this.deploymentsProvider.refresh());
+		const deploymentsDispose = {
+			dispose: () => this.deploymentsProvider.dispose(),
+		};
 
-		// register Stop and Logs view item action buttons
-		this.registerDeploymentsIntegrationCommands();
-		// register Stop/Start/Resume/Suspend route level buttons
-		this.registerDeploymentsRouteCommands(deploymentsProvider);
+		const refreshVisibilityChange = deploymentsTreeView.onDidChangeVisibility((event) => {
+			if (event.visible) {
+				this.deploymentsProvider.refresh();
+			} else {
+				// stop auto-refresh when a view is not visible
+				console.warn('[DeploymentsProvider] Auto-refresh stopped');
+				this.deploymentsProvider.dispose();
+			}
+		});
+
+		this.context.subscriptions.push(deploymentsTreeView, deploymentsDispose, deploymentsRefreshCommand, refreshVisibilityChange);
 	}
 
-	private registerIntegrationsItemsContextMenu() {
+	public registerIntegrationsItemsContextMenu() {
 		const INTEGRATIONS_UPDATE_DEPENDENCIES_COMMAND_ID: string = 'kaoto.integrations.updateDependencies';
 
 		// register update dependencies menu button
@@ -582,44 +579,38 @@ export class ExtensionContextHandler {
 		);
 	}
 
-	public registerDeploymentsRouteCommands(deploymentsProvider: DeploymentsProvider) {
+	public registerDeploymentsRouteCommands() {
 		const DEPLOYMENTS_ROUTE_START_COMMAND_ID: string = 'kaoto.deployments.route.start';
 		const DEPLOYMENTS_ROUTE_STOP_COMMAND_ID: string = 'kaoto.deployments.route.stop';
 		const DEPLOYMENTS_ROUTE_RESUME_COMMAND_ID: string = 'kaoto.deployments.route.resume';
 		const DEPLOYMENTS_ROUTE_SUSPEND_COMMAND_ID: string = 'kaoto.deployments.route.suspend';
 
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_START_COMMAND_ID, async (route: ChildItem) => {
-				await new CamelRouteOperationJBangTask(RouteOperation.start, route.parentIntegration.label as string, route.label as string).executeAndWait();
-				await deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Started');
-				deploymentsProvider.refresh();
-				await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_START_COMMAND_ID);
-			}),
-		);
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_STOP_COMMAND_ID, async (route: ChildItem) => {
-				await new CamelRouteOperationJBangTask(RouteOperation.stop, route.parentIntegration.label as string, route.label as string).executeAndWait();
-				await deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Stopped');
-				deploymentsProvider.refresh();
-				await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_STOP_COMMAND_ID);
-			}),
-		);
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_RESUME_COMMAND_ID, async (route: ChildItem) => {
-				await new CamelRouteOperationJBangTask(RouteOperation.resume, route.parentIntegration.label as string, route.label as string).executeAndWait();
-				await deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Started');
-				deploymentsProvider.refresh();
-				await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_RESUME_COMMAND_ID);
-			}),
-		);
-		this.context.subscriptions.push(
-			vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_SUSPEND_COMMAND_ID, async (route: ChildItem) => {
-				await new CamelRouteOperationJBangTask(RouteOperation.suspend, route.parentIntegration.label as string, route.label as string).executeAndWait();
-				await deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Suspended');
-				deploymentsProvider.refresh();
-				await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_SUSPEND_COMMAND_ID);
-			}),
-		);
+		const startCommand = vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_START_COMMAND_ID, async (route: ChildItem) => {
+			await new CamelRouteOperationJBangTask(RouteOperation.start, route.parentIntegration.label as string, route.label as string).executeAndWait();
+			await this.deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Started');
+			this.deploymentsProvider.refresh();
+			await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_START_COMMAND_ID);
+		});
+		const stopCommand = vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_STOP_COMMAND_ID, async (route: ChildItem) => {
+			await new CamelRouteOperationJBangTask(RouteOperation.stop, route.parentIntegration.label as string, route.label as string).executeAndWait();
+			await this.deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Stopped');
+			this.deploymentsProvider.refresh();
+			await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_STOP_COMMAND_ID);
+		});
+		const resumeCommand = vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_RESUME_COMMAND_ID, async (route: ChildItem) => {
+			await new CamelRouteOperationJBangTask(RouteOperation.resume, route.parentIntegration.label as string, route.label as string).executeAndWait();
+			await this.deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Started');
+			this.deploymentsProvider.refresh();
+			await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_RESUME_COMMAND_ID);
+		});
+		const suspendCommand = vscode.commands.registerCommand(DEPLOYMENTS_ROUTE_SUSPEND_COMMAND_ID, async (route: ChildItem) => {
+			await new CamelRouteOperationJBangTask(RouteOperation.suspend, route.parentIntegration.label as string, route.label as string).executeAndWait();
+			await this.deploymentsProvider.waitUntilRouteHasState(route.parentIntegration.port, route.label as string, 'Suspended');
+			this.deploymentsProvider.refresh();
+			await this.sendCommandTrackingEvent(DEPLOYMENTS_ROUTE_SUSPEND_COMMAND_ID);
+		});
+
+		this.context.subscriptions.push(startCommand, stopCommand, resumeCommand, suspendCommand);
 	}
 
 	public async hideIntegrationsViewButtonsForMavenProjects() {

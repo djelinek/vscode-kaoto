@@ -80,10 +80,18 @@ export async function activate(context: vscode.ExtensionContext) {
 	contextHandler.registerOpenWithKaoto();
 
 	/*
-	 * register 'Integrations' view provider
+	 * register all views (Integrations, Deployments, Tests, Help & Feedback) first to avoid race conditions
 	 */
 	contextHandler.registerIntegrationsView();
+	contextHandler.registerDeploymentsView(portManager);
+	contextHandler.registerTestsView();
+	contextHandler.registerHelpAndFeedbackView();
+
+	/*
+	 * register commands for 'Integrations' view
+	 */
 	await contextHandler.hideIntegrationsViewButtonsForMavenProjects();
+	contextHandler.registerIntegrationsItemsContextMenu();
 	contextHandler.registerNewCamelFilesCommands();
 	contextHandler.registerNewCamelProjectCommands();
 	contextHandler.registerKubernetesRunCommands();
@@ -91,19 +99,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	contextHandler.registerRunSourceDirCommands(portManager);
 
 	/*
-	 * register 'Deployments' view provider
+	 * register commands for 'Tests' view
 	 */
-	contextHandler.registerDeploymentsView(portManager);
+	contextHandler.registerTestsInitCommands();
+	contextHandler.registerTestsRunCommands();
 
 	/*
-	 * register 'Tests' view provider
+	 * register commands for 'Deployments' view
 	 */
-	contextHandler.registerTestsView();
-
-	/*
-	 * register 'Help & Feedback' view provider
-	 */
-	contextHandler.registerHelpAndFeedbackView();
+	contextHandler.registerDeploymentsIntegrationCommands(); // Stop and Logs view item action buttons
+	contextHandler.registerDeploymentsRouteCommands(); // Stop/Start/Resume/Suspend route level buttons
 
 	/*
 	 * send extension startup event into Red Hat Telemetry
