@@ -125,21 +125,21 @@ export async function activate(context: vscode.ExtensionContext) {
 	 */
 	await contextHandler.showWhatsNewIfNeeded();
 
-	/*
+	/*x
 	 * check JBang is available on a system PATH
 	 */
 	const jbang = await contextHandler.checkJbangOnPath();
 
 	/*
-	 * check Apache Camel Trusted Source is configured
+	 * check JBang Trusted Sources and plugins are configured
 	 */
 	if (jbang) {
-		await contextHandler.checkCamelJbangTrustedSource();
-		await contextHandler.checkCamelJBangKubernetesPlugin();
-		await contextHandler.checkCamelJBangTestPlugin();
+		await contextHandler.checkJBangTrustedSources();
+		await contextHandler.checkCamelJBangPlugins();
 	}
 
 	KaotoOutputChannel.logInfo('Kaoto extension is successfully setup.');
+	console.log('Kaoto extension is successfully setup.');
 }
 
 export async function deactivate() {

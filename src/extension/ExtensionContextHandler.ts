@@ -16,7 +16,6 @@
 import * as vscode from 'vscode';
 import path from 'path';
 import * as KogitoVsCode from '@kie-tools-core/vscode-extension/dist';
-import { execSync } from 'child_process';
 import { HelpFeedbackProvider } from '../views/providers/HelpFeedbackProvider';
 import { IntegrationsProvider } from '../views/providers/IntegrationsProvider';
 import { Integration } from '../views/integrationTreeItems/Integration';
@@ -24,12 +23,13 @@ import { NewCamelRouteCommand } from '../commands/NewCamelRouteCommand';
 import { NewCamelKameletCommand } from '../commands/NewCamelKameletCommand';
 import { NewCamelPipeCommand } from '../commands/NewCamelPipeCommand';
 import {
+	CAMEL_TRUSTED_SOURCE_URL,
+	CITRUS_TRUSTED_SOURCE_URL,
 	findFolderOfPomXml,
-	verifyCamelJBangTrustedSource,
-	verifyCamelKubernetesPluginIsInstalled,
-	verifyCitrusJBangTrustedSource,
+	runJBangCommandWithStatusBar,
 	verifyJBangExists,
-	verifyCamelJBangTestPluginIsInstalled,
+	verifyJBangTrustedSources,
+	verifyCamelPluginsAreInstalled,
 } from '../helpers/helpers';
 import { KaotoOutputChannel } from './KaotoOutputChannel';
 import { NewCamelFileCommand } from '../commands/NewCamelFileCommand';
@@ -37,7 +37,6 @@ import { confirmFileDeleteDialog } from '../helpers/modals';
 import { TelemetryEvent, TelemetryService } from '@redhat-developer/vscode-redhat-telemetry';
 import { NewCamelProjectCommand } from '../commands/NewCamelProjectCommand';
 import { CamelRunJBangTask } from '../tasks/CamelRunJBangTask';
-import { CamelAddPluginJBangTask } from '../tasks/CamelAddPluginJBangTask';
 import { CamelKubernetesRunJBangTask } from '../tasks/CamelKubernetesRunJBangTask';
 import { DeploymentsProvider } from '../views/providers/DeploymentsProvider';
 import { PortManager } from '../helpers/PortManager';
@@ -137,40 +136,37 @@ export class ExtensionContextHandler {
 		return true;
 	}
 
-	public async checkCamelJbangTrustedSource() {
-		const camelTrustedSource = await verifyCamelJBangTrustedSource();
-		if (!camelTrustedSource) {
-			const camelTrustUrl: string = 'https://github.com/apache/camel/';
-			execSync(`jbang trust add ${camelTrustUrl}`, { stdio: ['pipe', 'pipe', process.stderr] });
-			KaotoOutputChannel.logInfo('Apache Camel Trusted Source was added into JBang configuration.');
+	public async checkJBangTrustedSources() {
+		const camelTrustedSources = await verifyJBangTrustedSources([CAMEL_TRUSTED_SOURCE_URL, CITRUS_TRUSTED_SOURCE_URL]);
+		const camelTrustedSourcesToAdd = camelTrustedSources.filter((source) => !source.exists).map((source) => source.url);
+		if (camelTrustedSourcesToAdd.length > 0) {
+			const output = await runJBangCommandWithStatusBar(
+				`trust add ${camelTrustedSourcesToAdd.join(' ')}`,
+				`Adding [${camelTrustedSourcesToAdd.join(', ')}] into JBang configuration Trusted Sources...`,
+			);
+			if (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error')) {
+				const errorMessage = `Failed to add [${camelTrustedSourcesToAdd.join(', ')}] into JBang configuration Trusted Sources: ${output.stderr}`;
+				KaotoOutputChannel.logError(errorMessage);
+				vscode.window.showWarningMessage(errorMessage);
+			} else {
+				KaotoOutputChannel.logInfo(`[${camelTrustedSourcesToAdd.join(', ')}] were added into JBang configuration Trusted Sources.`);
+			}
 		}
 	}
 
-	/**
-	 * check if Citrus Trusted Source is added into JBang configuration
-	 */
-	public async checkCitrusJbangTrustedSource() {
-		const citrusTrustedSource = await verifyCitrusJBangTrustedSource();
-		if (!citrusTrustedSource) {
-			const citrusTrustUrl: string = 'https://github.com/citrusframework/citrus/';
-			execSync(`jbang trust add ${citrusTrustUrl}`, { stdio: ['pipe', 'pipe', process.stderr] });
-			KaotoOutputChannel.logInfo('Citrus Trusted Source was added into JBang configuration.');
-		}
-	}
-
-	public async checkCamelJBangKubernetesPlugin() {
-		const camelKubernetesPluginInstalled = await verifyCamelKubernetesPluginIsInstalled();
-		if (!camelKubernetesPluginInstalled) {
-			await new CamelAddPluginJBangTask('kubernetes').executeAndWait();
-			KaotoOutputChannel.logInfo('Apache Camel JBang Kubernetes plugin was installed.');
-		}
-	}
-
-	public async checkCamelJBangTestPlugin() {
-		const camelTestPluginInstalled = await verifyCamelJBangTestPluginIsInstalled();
-		if (!camelTestPluginInstalled) {
-			await new CamelAddPluginJBangTask('test').executeAndWait();
-			KaotoOutputChannel.logInfo('Apache Camel JBang Test plugin was installed.');
+	public async checkCamelJBangPlugins() {
+		const camelPlugins = await verifyCamelPluginsAreInstalled(['kubernetes', 'test']);
+		const camelPluginsToInstall = camelPlugins.filter((plugin) => !plugin.installed).map((plugin) => plugin.plugin);
+		if (camelPluginsToInstall.length > 0) {
+			for (const plugin of camelPluginsToInstall) {
+				const output = await runJBangCommandWithStatusBar(`camel@apache/camel plugin add ${plugin}`, `Adding Apache Camel JBang ${plugin} plugin...`);
+				if (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error')) {
+					KaotoOutputChannel.logError(`Failed to add Apache Camel JBang ${plugin} plugin: ${output.stderr}`);
+					vscode.window.showWarningMessage(`Failed to add Apache Camel JBang ${plugin} plugin: ${output.stderr}`);
+				} else {
+					KaotoOutputChannel.logInfo(`Apache Camel JBang ${plugin} plugin was installed.`);
+				}
+			}
 		}
 	}
 
