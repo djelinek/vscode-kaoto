@@ -9,6 +9,9 @@
   - run single test or all tests in a folder
   - test files regex can be configured through settings
 - Upgrade to Kaoto 2.10.0-RC2
+- Add `OpenAPI` into Kaoto view
+  - list existing OpenAPI specification files (`*openapi.json` or `*openapi.yaml`)
+  - import OpenAPI into Kaoto
 
 # 2.9.0
 
