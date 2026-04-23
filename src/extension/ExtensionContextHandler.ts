@@ -123,12 +123,15 @@ export class ExtensionContextHandler {
 	}
 
 	public async checkJbangOnPath(): Promise<boolean> {
+		console.log('[Kaoto] Checking for JBang on system PATH...');
+		KaotoOutputChannel.logInfo('Checking for JBang on system PATH...');
 		const jbangExec = await verifyJBangExists();
 		await vscode.commands.executeCommand('setContext', 'kaoto.jbangAvailable', jbangExec); // store availability in VS Code context
 		if (!jbangExec) {
 			const jbangInstallationLink: string = 'https://www.jbang.dev/documentation/jbang/latest/installation.html';
 			const msg: string = `JBang is missing on a system PATH. Please follow instructions below and install JBang. [JBang Installation Guide](${jbangInstallationLink}).`;
 			KaotoOutputChannel.logWarning(msg);
+			console.warn(`[Kaoto] ${msg}`);
 			const selection = await vscode.window.showWarningMessage(msg, 'Install');
 			if (selection !== undefined) {
 				await vscode.commands.executeCommand('vscode.open', `${jbangInstallationLink}`);
@@ -137,40 +140,63 @@ export class ExtensionContextHandler {
 			}
 			return false;
 		}
+		console.log('[Kaoto] JBang found on system PATH');
+		KaotoOutputChannel.logInfo('JBang is available on system PATH');
 		return true;
 	}
 
 	public async checkJBangTrustedSources() {
+		console.log('[Kaoto] Checking JBang trusted sources...');
+		KaotoOutputChannel.logInfo('Checking JBang trusted sources...');
 		const camelTrustedSources = await verifyJBangTrustedSources([CAMEL_TRUSTED_SOURCE_URL, CITRUS_TRUSTED_SOURCE_URL]);
 		const camelTrustedSourcesToAdd = camelTrustedSources.filter((source) => !source.exists).map((source) => source.url);
 		if (camelTrustedSourcesToAdd.length > 0) {
+			console.log(`[Kaoto] Adding trusted sources: ${camelTrustedSourcesToAdd.join(', ')}`);
+			KaotoOutputChannel.logInfo(`Adding trusted sources: ${camelTrustedSourcesToAdd.join(', ')}`);
 			const output = await runJBangCommandWithStatusBar(
 				`trust add ${camelTrustedSourcesToAdd.join(' ')}`,
 				`Adding [${camelTrustedSourcesToAdd.join(', ')}] into JBang configuration Trusted Sources...`,
 			);
-			if (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error')) {
-				const errorMessage = `Failed to add [${camelTrustedSourcesToAdd.join(', ')}] into JBang configuration Trusted Sources: ${output.stderr}`;
+			if ((output.exitCode !== 0 && output.exitCode !== undefined) || (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error'))) {
+				const errorMessage = `Failed to add [${camelTrustedSourcesToAdd.join(', ')}] into JBang configuration Trusted Sources (exit code: ${output.exitCode}): ${output.stderr}`;
 				KaotoOutputChannel.logError(errorMessage);
+				console.error(`[Kaoto] ${errorMessage}`);
 				vscode.window.showWarningMessage(errorMessage);
 			} else {
-				KaotoOutputChannel.logInfo(`[${camelTrustedSourcesToAdd.join(', ')}] were added into JBang configuration Trusted Sources.`);
+				const successMsg = `[${camelTrustedSourcesToAdd.join(', ')}] were added into JBang configuration Trusted Sources.`;
+				KaotoOutputChannel.logInfo(successMsg);
+				console.log(`[Kaoto] ${successMsg}`);
 			}
+		} else {
+			console.log('[Kaoto] All required trusted sources are already configured');
+			KaotoOutputChannel.logInfo('All required trusted sources are already configured');
 		}
 	}
 
 	public async checkCamelJBangPlugins() {
+		console.log('[Kaoto] Checking Camel JBang plugins...');
+		KaotoOutputChannel.logInfo('Checking Camel JBang plugins...');
 		const camelPlugins = await verifyCamelPluginsAreInstalled(['kubernetes', 'test']);
 		const camelPluginsToInstall = camelPlugins.filter((plugin) => !plugin.installed).map((plugin) => plugin.plugin);
 		if (camelPluginsToInstall.length > 0) {
+			console.log(`[Kaoto] Installing missing plugins: ${camelPluginsToInstall.join(', ')}`);
+			KaotoOutputChannel.logInfo(`Installing missing plugins: ${camelPluginsToInstall.join(', ')}`);
 			for (const plugin of camelPluginsToInstall) {
 				const output = await runJBangCommandWithStatusBar(`camel@apache/camel plugin add ${plugin}`, `Adding Apache Camel JBang ${plugin} plugin...`);
-				if (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error')) {
-					KaotoOutputChannel.logError(`Failed to add Apache Camel JBang ${plugin} plugin: ${output.stderr}`);
-					vscode.window.showWarningMessage(`Failed to add Apache Camel JBang ${plugin} plugin: ${output.stderr}`);
+				if ((output.exitCode !== 0 && output.exitCode !== undefined) || (output.stderr.length > 0 && output.stderr.toLowerCase().includes('error'))) {
+					const errorMsg = `Failed to add Apache Camel JBang ${plugin} plugin (exit code: ${output.exitCode}): ${output.stderr}`;
+					KaotoOutputChannel.logError(errorMsg);
+					console.error(`[Kaoto] ${errorMsg}`);
+					vscode.window.showWarningMessage(errorMsg);
 				} else {
-					KaotoOutputChannel.logInfo(`Apache Camel JBang ${plugin} plugin was installed.`);
+					const successMsg = `Apache Camel JBang ${plugin} plugin was installed.`;
+					KaotoOutputChannel.logInfo(successMsg);
+					console.log(`[Kaoto] ${successMsg}`);
 				}
 			}
+		} else {
+			console.log('[Kaoto] All required Camel JBang plugins are already installed');
+			KaotoOutputChannel.logInfo('All required Camel JBang plugins are already installed');
 		}
 	}
 

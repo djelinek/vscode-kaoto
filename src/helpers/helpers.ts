@@ -59,7 +59,26 @@ export const CAMEL_TRUSTED_SOURCE_URL: string = 'https://github.com/apache/camel
 export const CITRUS_TRUSTED_SOURCE_URL: string = 'https://github.com/citrusframework/citrus/';
 
 export async function verifyJBangExists(): Promise<boolean> {
-	return await runJBangCommandWithStatusBar(`version`, `Checking JBang executable on PATH...`).then((output) => !output.stderr.includes('command not found')); // JBang exists
+	const output = await runJBangCommandWithStatusBar(`version`, `Checking JBang executable on PATH...`);
+
+	// Check for various command-not-found indicators across different shells and platforms
+	const notFoundIndicators = ['command not found', 'not found', 'is not recognized', 'no such file or directory', 'enoent', 'cannot find', 'not available'];
+
+	const hasError = notFoundIndicators.some((indicator) => output.stderr.toLowerCase().includes(indicator.toLowerCase()));
+
+	// Validate positive confirmation: stdout should contain version info
+	const hasValidOutput = output.stdout.length > 0 && (output.stdout.toLowerCase().includes('jbang') || /\d+\.\d+/.test(output.stdout));
+
+	// Check exit code if available
+	const hasSuccessCode = output.exitCode === 0;
+
+	const jbangExists = !hasError && hasValidOutput && hasSuccessCode;
+
+	if (!jbangExists) {
+		console.log(`[Kaoto] JBang detection failed - exitCode: ${output.exitCode}, stderr: "${output.stderr}", stdout: "${output.stdout}"`);
+	}
+
+	return jbangExists;
 }
 
 export async function verifyCamelPluginsAreInstalled(plugins: string[]): Promise<{ plugin: string; installed: boolean }[]> {
@@ -74,7 +93,7 @@ export async function verifyJBangTrustedSources(urls: string[]): Promise<{ url: 
 	});
 }
 
-export async function runJBangCommandWithStatusBar(args: string, msg: string): Promise<{ stdout: string; stderr: string }> {
+export async function runJBangCommandWithStatusBar(args: string, msg: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 	const execPromise = promisify(exec);
 	return await window.withProgress(
 		{
@@ -87,9 +106,13 @@ export async function runJBangCommandWithStatusBar(args: string, msg: string): P
 			try {
 				const { stdout, stderr } = await execPromise(`jbang ${args}`);
 				progress.report({ increment: 100 });
-				return { stdout, stderr };
-			} catch (error) {
-				return { stdout: '', stderr: error instanceof Error ? error.message : String(error) };
+				return { stdout, stderr, exitCode: 0 };
+			} catch (error: any) {
+				const stdout = error.stdout || '';
+				const stderr = error.stderr || error.message || String(error);
+				const exitCode = error.code || 1;
+				console.log(`[Kaoto] JBang command failed - command: "jbang ${args}", exitCode: ${exitCode}, stderr: "${stderr}"`);
+				return { stdout, stderr, exitCode };
 			}
 		},
 	);
