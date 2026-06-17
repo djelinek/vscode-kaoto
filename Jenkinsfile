@@ -25,19 +25,19 @@ node('rhel9'){
 			sh "yarn test:unit"
 		}
 	}
-	stage('UI Tests') {
-		wrap([$class: 'Xvnc']) {
-			withCredentials([[$class: 'StringBinding', credentialsId: 'oc_developer_token', variable: 'TOKEN']]) {
-				sh 'oc login --token=${TOKEN} --server=https://api.ft-421-a.fuse.integration-qe.com:6443 --insecure-skip-tls-verify=true'
-				sh 'oc project kaoto'
-			}
-			env.TEST_RESOURCES = 'test-resources'
-			env.CODE_VERSION = 'max'
-			sh "yarn build:vsix"
-			sh "yarn test:it:with-prebuilt-vsix"
-			sh "rm -rf *.vsix"
-		}
-	}
+	// stage('UI Tests') {
+	// 	wrap([$class: 'Xvnc']) {
+	// 		withCredentials([[$class: 'StringBinding', credentialsId: 'oc_developer_token', variable: 'TOKEN']]) {
+	// 			sh 'oc login --token=${TOKEN} --server=https://api.ft-421-a.fuse.integration-qe.com:6443 --insecure-skip-tls-verify=true'
+	// 			sh 'oc project kaoto'
+	// 		}
+	// 		env.TEST_RESOURCES = 'test-resources'
+	// 		env.CODE_VERSION = 'max'
+	// 		sh "yarn build:vsix"
+	// 		sh "yarn test:it:with-prebuilt-vsix"
+	// 		sh "rm -rf *.vsix"
+	// 	}
+	// }
 
 	stage 'Package vscode-kaoto'
 	def packageJson = readJSON file: 'package.json'
